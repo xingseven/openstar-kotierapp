@@ -9,6 +9,7 @@ import org.json.JSONObject
 
 class EasyTierVpnService : VpnService() {
     private var job: Job? = null
+    private var pfd: android.os.ParcelFileDescriptor? = null
 
     companion object {
         private const val TAG = "EasyTierVpn"
@@ -48,12 +49,13 @@ class EasyTierVpnService : VpnService() {
                     addDnsServer("223.5.5.5")
                 }
 
-                val pfd = builder.establish()
-                if (pfd == null) {
+                val pfdResult = builder.establish()
+                if (pfdResult == null) {
                     Log.e(TAG, "establish returned null"); stopSelf(startId); return@launch
                 }
+                pfd = pfdResult
 
-                val fd = pfd.fd
+                val fd = pfdResult.detachFd()
                 val result = EasyTierJNI.setTunFd(instanceName, fd)
                 Log.i(TAG, "setTunFd result=$result")
 
@@ -73,6 +75,8 @@ class EasyTierVpnService : VpnService() {
     override fun onDestroy() {
         super.onDestroy()
         job?.cancel()
+        try { pfd?.close() } catch (e: Exception) {}
+        pfd = null
         Log.d(TAG, "VPN stopped")
     }
 

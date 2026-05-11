@@ -1,8 +1,10 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -10,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 data class NavItem(
     val label: String,
@@ -30,7 +34,7 @@ fun HomePage() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(modifier = Modifier.height(64.dp)) {
                 navItems.forEachIndexed { index, item ->
                     NavigationBarItem(
                         selected = selectedIndex == index,
@@ -38,10 +42,11 @@ fun HomePage() {
                         icon = {
                             Icon(
                                 imageVector = if (selectedIndex == index) item.selectedIcon else item.icon,
-                                contentDescription = item.label
+                                contentDescription = item.label,
+                                modifier = Modifier.size(20.dp)
                             )
                         },
-                        label = { Text(item.label) }
+                        label = { Text(item.label, fontSize = 10.sp) }
                     )
                 }
             }

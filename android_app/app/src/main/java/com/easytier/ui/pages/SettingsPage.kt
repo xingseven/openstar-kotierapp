@@ -1,4 +1,4 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.service.SettingsRepository
@@ -43,11 +44,11 @@ fun SettingsPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("设置") }) }
+        topBar = { TopAppBar(modifier = Modifier.height(52.dp),title = { Text("设置") }) }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             SectionHeader("通用")
             SettingsCard {
@@ -93,7 +94,7 @@ fun SettingsPage() {
                 ) {
                     Icon(Icons.Default.Terminal, contentDescription = null, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text("日志级别", modifier = Modifier.weight(1f), fontSize = 14.sp)
+                    Text("日志级别", modifier = Modifier.weight(1f), fontSize = 13.sp)
                     var expanded by remember { mutableStateOf(false) }
                     Box {
                         TextButton(onClick = { expanded = true }) { Text(logLevel.uppercase()) }
@@ -109,7 +110,7 @@ fun SettingsPage() {
                 }
                 HorizontalDivider()
                 ListItem(
-                    headlineContent = { Text("查看运行日志", fontSize = 14.sp) },
+                    headlineContent = { Text("查看运行日志", fontSize = 13.sp) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -130,7 +131,7 @@ fun SettingsPage() {
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Icon(Icons.Default.DeleteSweep, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text("清除所有数据")
                 }
             }
@@ -161,7 +162,7 @@ private fun SettingSwitch(label: String, value: Boolean, hint: String? = null, o
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 14.sp)
+            Text(label, fontSize = 13.sp)
             if (hint != null) Text(hint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = value, onCheckedChange = onChanged)
@@ -171,7 +172,7 @@ private fun SettingSwitch(label: String, value: Boolean, hint: String? = null, o
 @Composable
 private fun InfoRow(title: String, value: String) {
     ListItem(
-        headlineContent = { Text(title, fontSize = 14.sp) },
+        headlineContent = { Text(title, fontSize = 13.sp) },
         trailingContent = { Text(value, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     )
 }

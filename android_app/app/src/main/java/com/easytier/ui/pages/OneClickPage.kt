@@ -1,4 +1,4 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import android.app.Activity
 import android.content.ClipData
@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -84,11 +85,11 @@ fun OneClickPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("一键联机") }) }
+        topBar = { TopAppBar(modifier = Modifier.height(52.dp),title = { Text("一键联机") }) }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // 模式切换
             Card {
@@ -212,7 +213,7 @@ fun OneClickPage() {
                 Text(
                     text = statusMessage,
                     color = if (statusIsError) Color(0xFFEF5350) else Color(0xFF4CAF50),
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
@@ -238,7 +239,7 @@ private fun ModeButton(selected: Boolean, icon: androidx.compose.ui.graphics.vec
         ) {
             Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = textColor)
+            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = textColor)
         }
     }
 }
@@ -260,10 +261,10 @@ private fun HostMode(
                 modifier = Modifier.size(48.dp),
                 tint = if (isRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Text(if (isRunning) "网络运行中" else "点击下方按钮创建网络", fontWeight = FontWeight.SemiBold)
             if (isRunning && hostConfig != null) {
-                Text("网络: ${hostConfig.networkName}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("网络: ${hostConfig.networkName}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(20.dp))
             Button(
@@ -274,7 +275,7 @@ private fun HostMode(
                          else ButtonDefaults.buttonColors()
             ) {
                 Icon(if (isRunning) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(when { isLoading && isRunning -> "停止中..."; isLoading -> "启动中..."
                      isRunning -> "停止网络"; else -> "启动网络" })
             }
@@ -283,10 +284,10 @@ private fun HostMode(
 
     if (generatedCode.isNotEmpty()) {
         Card {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text("联机编码", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     IconButton(onClick = onCopy) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "复制", modifier = Modifier.size(20.dp))
@@ -315,13 +316,13 @@ private fun GuestMode(
     onJoin: () -> Unit, onLeave: () -> Unit
 ) {
     Card {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 Text("输入联机编码", fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = guestCode, onValueChange = onGuestCodeChange,
                 placeholder = { Text("粘贴房主分享的编码") },
@@ -334,7 +335,7 @@ private fun GuestMode(
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Icon(Icons.Default.Login, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(if (isLoading) "加入中..." else "加入网络")
             }
         }
@@ -342,7 +343,7 @@ private fun GuestMode(
 
     if (isRunning && hostConfig != null) {
         Card {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {

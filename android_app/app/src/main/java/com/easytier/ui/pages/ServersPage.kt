@@ -1,4 +1,4 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -76,7 +77,7 @@ fun ServersPage() {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
                         value = url,
                         onValueChange = { url = it },
@@ -116,7 +117,7 @@ fun ServersPage() {
                 Column {
                     OutlinedTextField(value = editName, onValueChange = { editName = it },
                         label = { Text("名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(6.dp))
                     OutlinedTextField(value = editUrl, onValueChange = { editUrl = it },
                         label = { Text("地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
@@ -134,7 +135,7 @@ fun ServersPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            TopAppBar(modifier = Modifier.height(52.dp),
                 title = { Text("服务器") },
                 actions = {
                     IconButton(onClick = { showAddDialog = true }) {
@@ -152,14 +153,14 @@ fun ServersPage() {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // ── 公共节点 ──
                 item {
                     if (publicNodes.isEmpty()) {
                         Card {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -167,7 +168,7 @@ fun ServersPage() {
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(6.dp))
                                 Text(
                                     publicNodeError ?: "暂无公共节点数据",
                                     fontSize = 13.sp,
@@ -199,7 +200,7 @@ fun ServersPage() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                             Icon(Icons.Filled.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(6.dp))
                                 Text("社区公共节点", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 Text("${publicNodes.size} 个", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.width(4.dp))
@@ -267,7 +268,7 @@ fun ServersPage() {
                                     modifier = Modifier.size(48.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(Modifier.height(12.dp))
+                                Spacer(Modifier.height(8.dp))
                                 Text("暂无收藏服务器", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.height(16.dp))
                                 Button(onClick = { showAddDialog = true }) {
@@ -411,7 +412,7 @@ private fun ServerCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(entry.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(entry.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     if (entry.isDefault) {
                         Spacer(Modifier.width(6.dp))
                         Surface(

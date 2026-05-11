@@ -1,4 +1,4 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +39,7 @@ fun LogPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            TopAppBar(modifier = Modifier.height(52.dp),
                 title = { Text("运行日志") },
                 actions = {
                     TextButton(onClick = { autoScroll = !autoScroll }) {

@@ -1,4 +1,4 @@
-package com.easytier.ui.pages
+﻿package com.easytier.ui.pages
 
 import android.app.Activity
 import android.content.Intent
@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -185,7 +186,7 @@ fun NetworkConfigPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            TopAppBar(modifier = Modifier.height(52.dp),
                 title = { Text("网络配置") },
                 actions = {
                     IconButton(onClick = { addConfig() }) { Icon(Icons.Default.Add, contentDescription = "新建配置") }
@@ -222,33 +223,33 @@ fun NetworkConfigPage() {
             }
 
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // 基本设置
                 Card {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text("基本设置", fontWeight = FontWeight.SemiBold)
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = labelText, onValueChange = { labelText = it }, label = { Text("配置标签") }, placeholder = { Text("例如: 家庭网络") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(6.dp))
                         OutlinedTextField(value = hostnameText, onValueChange = { hostnameText = it }, label = { Text("本机主机名") }, placeholder = { Text("例如: my-phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(6.dp))
                         OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(6.dp))
                         OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(6.dp))
 
                         val dhcpOn = configs.getOrNull(selectedIndex)?.dhcp ?: true
                         CustomSwitch(label = "DHCP 自动分配 IP", value = dhcpOn) { v ->
                             configs = configs.toMutableList().also { it[selectedIndex].dhcp = v }
                         }
                         if (!dhcpOn) {
-                            Spacer(Modifier.height(10.dp))
+                            Spacer(Modifier.height(6.dp))
                             OutlinedTextField(value = ipv4Text, onValueChange = { ipv4Text = it }, label = { Text("静态 IPv4") }, placeholder = { Text("例如: 10.144.144.10") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                     }
@@ -256,10 +257,10 @@ fun NetworkConfigPage() {
 
                 // 入口服务器
                 Card {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Dns, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text("入口服务器", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             TextButton(onClick = {
                                 saveCurrentConfig(); showServerDialog = true
@@ -294,12 +295,12 @@ fun NetworkConfigPage() {
                                         placeholder = { Text("wss://example.com") },
                                         singleLine = true, modifier = Modifier.weight(1f)
                                     )
-                                    Spacer(Modifier.width(8.dp))
+                                    Spacer(Modifier.width(6.dp))
                                     Button(onClick = {
                                         if (newUrl.isNotBlank()) { servers.add(newUrl.trim()); newUrl = "" }
                                     }) { Text("添加") }
                                 }
-                                Spacer(Modifier.height(12.dp))
+                                Spacer(Modifier.height(8.dp))
                                 if (servers.isEmpty()) {
                                     Text("暂无服务器", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 } else {
@@ -340,7 +341,7 @@ fun NetworkConfigPage() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text("高级设置", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         Icon(
                             Icons.Default.ExpandMore,
@@ -360,7 +361,7 @@ fun NetworkConfigPage() {
                 AnimatedVisibility(visible = showAdvanced) {
                     if (selectedIndex in configs.indices) {
                         Card {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                                 SectionLabel("协议与传输")
                                 CustomSwitch("KCP 代理", "启用 KCP 代理入站", configs[selectedIndex].enableKcpProxy) { configs[selectedIndex].enableKcpProxy = it; forceRecompose() }
                                 CustomSwitch("禁用 KCP 入站", configs[selectedIndex].disableKcpInput) { configs[selectedIndex].disableKcpInput = it; forceRecompose() }
@@ -392,13 +393,13 @@ fun NetworkConfigPage() {
                                 SectionLabel("白名单")
                                 OutlinedTextField(value = listenAddressesText, onValueChange = { listenAddressesText = it; saveCurrentConfig() }, label = { Text("监听地址（逗号分隔）") }, placeholder = { Text("tcp://0.0.0.0:11010, udp://0.0.0.0:11010") }, maxLines = 2, modifier = Modifier.fillMaxWidth())
 
-                                Spacer(Modifier.height(10.dp))
+                                Spacer(Modifier.height(6.dp))
                                 OutlinedTextField(value = proxyNetworksText, onValueChange = { proxyNetworksText = it; saveCurrentConfig() }, label = { Text("代理网络 CIDR（逗号分隔）") }, placeholder = { Text("192.168.1.0/24") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-                                Spacer(Modifier.height(10.dp))
+                                Spacer(Modifier.height(6.dp))
                                 CustomSwitch("启用外部网络白名单", configs[selectedIndex].foreignNetworkWhitelistEnabled) { configs[selectedIndex].foreignNetworkWhitelistEnabled = it; forceRecompose() }
                                 if (configs[selectedIndex].foreignNetworkWhitelistEnabled) {
-                                    Spacer(Modifier.height(10.dp))
+                                    Spacer(Modifier.height(6.dp))
                                     OutlinedTextField(value = whitelistText, onValueChange = { whitelistText = it; saveCurrentConfig() }, label = { Text("外部网络白名单（逗号分隔）") }, placeholder = { Text("network1, network2") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                 }
                             }
@@ -493,7 +494,7 @@ fun NetworkConfigPage() {
                                  else ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
                     ) {
                         Icon(if (!isRunning) Icons.Default.PlayArrow else Icons.Default.Stop, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(if (isLoading) "处理中..." else if (!isRunning) "启动网络" else "停止网络")
                     }
 
@@ -504,7 +505,7 @@ fun NetworkConfigPage() {
                         modifier = Modifier.weight(1f).height(50.dp)
                     ) {
                         Icon(Icons.Default.FlashOn, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text("一键联机")
                     }
                 }
@@ -515,13 +516,13 @@ fun NetworkConfigPage() {
                 if (isRunning) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.MonitorHeart, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text("节点监测", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
                         Text("实时", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(6.dp))
                     if (nodes.isEmpty()) {
                         Card {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
