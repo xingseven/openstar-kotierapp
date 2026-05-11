@@ -20,7 +20,7 @@ Item {
             id: actionRow
             anchors.right: parent.right
             anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalHeight
+            anchors.verticalCenter: parent.verticalCenter
             height: parent.height
             layoutDirection: Qt.RightToLeft
             spacing: 4

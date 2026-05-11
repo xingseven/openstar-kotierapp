@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Network Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Network Concurrent QuickControls2 QuickLayouts QuickShapes)
 
 # ── 源文件 ──
 set(SOURCES
@@ -55,6 +55,9 @@ target_link_libraries(EasyTier PRIVATE
     Qt6::Quick
     Qt6::Network
     Qt6::Concurrent
+    Qt6::QuickControls2
+    Qt6::QuickLayouts
+    Qt6::QuickShapes
 )
 
 # ── QML 文件作为资源嵌入 ──
