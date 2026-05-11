@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
+import com.easytier.ui.components.CompactTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,14 +136,11 @@ fun ServersPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("服务器") },
-                actions = {
+            CompactTopBar(title = "服务器") {
                     IconButton(onClick = { showAddDialog = true }) {
                         Icon(Icons.Default.Add, contentDescription = "添加服务器")
                     }
-                }
-            )
+            }
         }
     ) { padding ->
         if (isLoading) {

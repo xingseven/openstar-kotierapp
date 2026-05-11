@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.data.NetworkConfig
+import com.easytier.ui.components.CompactTopBar
 import com.easytier.data.NodeInfo
 import com.easytier.jni.EasyTierJNI
 import com.easytier.service.EasyTierService
@@ -186,17 +187,14 @@ fun NetworkConfigPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("网络配置") },
-                actions = {
+            CompactTopBar(title = "网络配置") {
                     IconButton(onClick = { addConfig() }) { Icon(Icons.Default.Add, contentDescription = "新建配置") }
                     IconButton(onClick = { deleteConfig() }) { Icon(Icons.Default.DeleteOutline, contentDescription = "删除配置") }
                     IconButton(onClick = {
                         saveCurrentConfig()
                         LogService.info("配置已保存 (${configs.size} 个)", source = "NetworkConfig")
                     }) { Icon(Icons.Default.Save, contentDescription = "保存配置") }
-                }
-            )
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {

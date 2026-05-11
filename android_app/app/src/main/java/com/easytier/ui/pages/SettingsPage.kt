@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.service.SettingsRepository
+import com.easytier.ui.components.CompactTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,7 @@ fun SettingsPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("设置") }) }
+        topBar = { CompactTopBar("设置") }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),

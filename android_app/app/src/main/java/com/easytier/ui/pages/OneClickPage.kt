@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.easytier.ui.components.CompactTopBar
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -85,7 +86,7 @@ fun OneClickPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("一键联机") }) }
+        topBar = { CompactTopBar("一键联机") }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),

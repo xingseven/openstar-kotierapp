@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
+import com.easytier.ui.components.CompactTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
@@ -39,17 +40,14 @@ fun LogPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("运行日志") },
-                actions = {
+            CompactTopBar(title = "运行日志") {
                     TextButton(onClick = { autoScroll = !autoScroll }) {
                         Text(if (autoScroll) "自动滚动: 开" else "自动滚动: 关")
                     }
                     IconButton(onClick = { LogService.clear() }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = "清除")
                     }
-                }
-            )
+            }
         }
     ) {
         if (logs.isEmpty()) {
