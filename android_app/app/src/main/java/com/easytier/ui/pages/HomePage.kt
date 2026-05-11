@@ -34,7 +34,7 @@ fun HomePage() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar(modifier = Modifier.height(64.dp)) {
+            NavigationBar {
                 navItems.forEachIndexed { index, item ->
                     NavigationBarItem(
                         selected = selectedIndex == index,
@@ -43,10 +43,10 @@ fun HomePage() {
                             Icon(
                                 imageVector = if (selectedIndex == index) item.selectedIcon else item.icon,
                                 contentDescription = item.label,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text(item.label, fontSize = 10.sp) }
+                        label = { Text(item.label, fontSize = 12.sp) }
                     )
                 }
             }

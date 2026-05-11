@@ -186,7 +186,7 @@ fun NetworkConfigPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(modifier = Modifier.height(52.dp),
+            TopAppBar(
                 title = { Text("网络配置") },
                 actions = {
                     IconButton(onClick = { addConfig() }) { Icon(Icons.Default.Add, contentDescription = "新建配置") }

@@ -85,7 +85,7 @@ fun OneClickPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(modifier = Modifier.height(52.dp),title = { Text("一键联机") }) }
+        topBar = { TopAppBar(title = { Text("一键联机") }) }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),

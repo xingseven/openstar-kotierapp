@@ -39,7 +39,7 @@ fun LogPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(modifier = Modifier.height(52.dp),
+            TopAppBar(
                 title = { Text("运行日志") },
                 actions = {
                     TextButton(onClick = { autoScroll = !autoScroll }) {

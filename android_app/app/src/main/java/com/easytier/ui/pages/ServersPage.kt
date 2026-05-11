@@ -135,7 +135,7 @@ fun ServersPage() {
 
     Scaffold(
         topBar = {
-            TopAppBar(modifier = Modifier.height(52.dp),
+            TopAppBar(
                 title = { Text("服务器") },
                 actions = {
                     IconButton(onClick = { showAddDialog = true }) {

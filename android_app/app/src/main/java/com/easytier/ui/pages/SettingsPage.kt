@@ -44,7 +44,7 @@ fun SettingsPage() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(modifier = Modifier.height(52.dp),title = { Text("设置") }) }
+        topBar = { TopAppBar(title = { Text("设置") }) }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
