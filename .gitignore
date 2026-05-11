@@ -1,61 +1,14 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-.melange/
-coverage/
-
-# IntelliJ related
+# Android
+android_app/.gradle/
+android_app/build/
+android_app/app/build/
+android_app/local.properties
 *.iml
-*.ipr
-*.iws
 .idea/
 
-# VSCode related
-.vscode/
-
-# Flutter/Dart
-.dart_tool/
-.packages
-.dart_tool/
-build/
-flutter_*.png
-**/ephemeral/
-**/generated_plugin_registrant.dart
-**/generated_plugin_registrant.h
-**/generated_plugin_registrant.m
-**.mocks.dart
-
-# Android
-android/.gradle/
-android/app/build/
-android/build/
-android/local.properties
-
-# iOS
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/Flutter.framework
-ios/Flutter/Flutter.podspec
-ios/Runner.xcworkspace
-ios/Podfile
-ios/Flutter/ephemeral/
-ios/Flutter/flutter_export_environment.sh
-
-# Web
-web/.dart_tool/
-web/build/
-
-# Test files
-device_screen.png
-test_b32.dart
-test_b32_2.dart
+# OS
+.DS_Store
+Thumbs.db
 
 # Claude
 .claude/
