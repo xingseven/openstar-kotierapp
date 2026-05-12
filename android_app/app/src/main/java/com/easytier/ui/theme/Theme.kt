@@ -8,8 +8,8 @@ import androidx.compose.ui.graphics.Color
 private val Accent = Color(0xFF66CCFF)
 private val BgDark = Color(0xFF1A1A2E)
 private val SurfaceDark = Color(0xFF16213E)
-private val BgLight = Color(0xFFF5F5F5)
-private val SurfaceLight = Color.White
+private val BgLight = Color.White
+private val SurfaceLight = Color(0xFFF7F6F8)
 private val TextDark = Color.White
 private val TextLight = Color(0xFF2D2D2D)
 
@@ -20,7 +20,7 @@ private val LightColorScheme = lightColorScheme(
     surface = SurfaceLight,
     onBackground = TextLight,
     onSurface = TextLight,
-    surfaceVariant = Color(0xFFEEEEEE),
+    surfaceVariant = Color(0xFFFBFAFC),
     onSurfaceVariant = TextLight.copy(alpha = 0.6f),
 )
 

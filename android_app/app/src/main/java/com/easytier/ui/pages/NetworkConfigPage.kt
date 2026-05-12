@@ -1,8 +1,12 @@
 ﻿package com.easytier.ui.pages
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.VpnService
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -12,9 +16,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,12 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.data.NetworkConfig
+import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.CompactTopBar
 import com.easytier.data.NodeInfo
 import com.easytier.jni.EasyTierJNI
 import com.easytier.service.EasyTierService
 import com.easytier.service.LogService
 import com.easytier.service.SettingsRepository
+import com.easytier.ui.components.AppIcon
+import com.easytier.ui.components.AppIcons
 import com.easytier.ui.components.CustomSwitch
 import com.easytier.ui.components.NodeInfoCard
 import kotlinx.coroutines.delay
@@ -47,6 +53,9 @@ fun NetworkConfigPage() {
     val context = LocalContext.current as Activity
     val scope = rememberCoroutineScope()
     val repo = LocalSettingsRepository.current
+    val clipboard = remember(context) {
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
 
     var configs by remember { mutableStateOf(loadSavedConfigs(repo)) }
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -102,8 +111,14 @@ fun NetworkConfigPage() {
     var networkSecretText by remember { mutableStateOf("") }
     var ipv4Text by remember { mutableStateOf("") }
     var proxyNetworksText by remember { mutableStateOf("") }
+    var customRoutesText by remember { mutableStateOf("") }
+    var exitNodesText by remember { mutableStateOf("") }
     var whitelistText by remember { mutableStateOf("") }
     var listenAddressesText by remember { mutableStateOf("") }
+    var devNameText by remember { mutableStateOf("") }
+    var mtuText by remember { mutableStateOf("") }
+    var defaultProtocolText by remember { mutableStateOf("") }
+    var encryptionAlgorithmText by remember { mutableStateOf("aes-gcm") }
 
     // 选择配置时绑定表单
     fun bindConfig(index: Int) {
@@ -115,8 +130,14 @@ fun NetworkConfigPage() {
         networkSecretText = cfg.networkSecret
         ipv4Text = cfg.ipv4
         proxyNetworksText = cfg.proxyNetworks.joinToString(", ")
+        customRoutesText = cfg.customRoutes.joinToString(", ")
+        exitNodesText = cfg.exitNodes.joinToString(", ")
         whitelistText = cfg.foreignNetworkWhitelist.joinToString(", ")
         listenAddressesText = cfg.listenAddresses.joinToString(", ")
+        devNameText = cfg.devName
+        mtuText = if (cfg.mtu > 0) cfg.mtu.toString() else ""
+        defaultProtocolText = cfg.defaultProtocol
+        encryptionAlgorithmText = cfg.encryptionAlgorithm
         isRunning = cfg.isRunning
         showAdvanced = false
     }
@@ -129,10 +150,37 @@ fun NetworkConfigPage() {
         cfg.networkName = networkNameText
         cfg.networkSecret = networkSecretText
         cfg.ipv4 = ipv4Text
-        cfg.proxyNetworks = proxyNetworksText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-        cfg.foreignNetworkWhitelist = whitelistText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-        cfg.listenAddresses = listenAddressesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+        cfg.proxyNetworks = csvToMutableStringList(proxyNetworksText)
+        cfg.customRoutes = csvToMutableStringList(customRoutesText)
+        cfg.exitNodes = csvToMutableStringList(exitNodesText)
+        cfg.foreignNetworkWhitelist = csvToMutableStringList(whitelistText)
+        cfg.listenAddresses = csvToMutableStringList(listenAddressesText)
+        cfg.devName = devNameText.trim()
+        cfg.mtu = mtuText.toIntOrNull()?.takeIf { it in 1..1380 } ?: 0
+        cfg.defaultProtocol = defaultProtocolText.trim().lowercase()
+        cfg.encryptionAlgorithm = encryptionAlgorithmText.trim().ifEmpty { "aes-gcm" }.lowercase()
         saveConfigs()
+    }
+
+    fun copyVirtualIp(ip: String) {
+        if (ip.isBlank()) return
+        clipboard.setPrimaryClip(ClipData.newPlainText("easytier_virtual_ip", ip))
+        Toast.makeText(context, "虚拟 IP 已复制到剪贴板", Toast.LENGTH_SHORT).show()
+    }
+
+    fun shareVirtualIp(node: NodeInfo) {
+        if (node.virtualIp.isBlank()) return
+        val shareText = buildString {
+            appendLine("EasyTier 直连地址")
+            appendLine("设备: ${node.hostname.ifEmpty { "本机" }}")
+            appendLine("虚拟 IP: ${node.virtualIp}")
+            append("说明: 可在需要手动直连的场景中使用该地址。")
+        }
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "分享直连地址"))
     }
 
     // 初始化绑定
@@ -188,12 +236,12 @@ fun NetworkConfigPage() {
     Scaffold(
         topBar = {
             CompactTopBar(title = "网络配置") {
-                    IconButton(onClick = { addConfig() }) { Icon(Icons.Default.Add, contentDescription = "新建配置") }
-                    IconButton(onClick = { deleteConfig() }) { Icon(Icons.Default.DeleteOutline, contentDescription = "删除配置") }
+                    IconButton(onClick = { addConfig() }) { AppIcon(AppIcons.Add, contentDescription = "新建配置") }
+                    IconButton(onClick = { deleteConfig() }) { AppIcon(AppIcons.Delete, contentDescription = "删除配置") }
                     IconButton(onClick = {
                         saveCurrentConfig()
                         LogService.info("配置已保存 (${configs.size} 个)", source = "NetworkConfig")
-                    }) { Icon(Icons.Default.Save, contentDescription = "保存配置") }
+                    }) { AppIcon(AppIcons.Save, contentDescription = "保存配置") }
             }
         }
     ) { padding ->
@@ -201,7 +249,7 @@ fun NetworkConfigPage() {
             // 配置标签页
             if (configs.size > 1) {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
                     items(configs.withIndex().toList()) { (index, cfg) ->
@@ -221,43 +269,43 @@ fun NetworkConfigPage() {
             }
 
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 // 基本设置
-                Card {
-                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                            AppIcon(AppIcons.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("基本设置", fontWeight = FontWeight.SemiBold)
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
                         OutlinedTextField(value = labelText, onValueChange = { labelText = it }, label = { Text("配置标签") }, placeholder = { Text("例如: 家庭网络") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(5.dp))
                         OutlinedTextField(value = hostnameText, onValueChange = { hostnameText = it }, label = { Text("本机主机名") }, placeholder = { Text("例如: my-phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(5.dp))
                         OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(5.dp))
                         OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(5.dp))
 
                         val dhcpOn = configs.getOrNull(selectedIndex)?.dhcp ?: true
                         CustomSwitch(label = "DHCP 自动分配 IP", value = dhcpOn) { v ->
                             configs = configs.toMutableList().also { it[selectedIndex].dhcp = v }
                         }
                         if (!dhcpOn) {
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(5.dp))
                             OutlinedTextField(value = ipv4Text, onValueChange = { ipv4Text = it }, label = { Text("静态 IPv4") }, placeholder = { Text("例如: 10.144.144.10") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
 
                 // 入口服务器
-                Card {
-                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Dns, contentDescription = null, modifier = Modifier.size(18.dp))
+                            AppIcon(AppIcons.Dns, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("入口服务器", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             TextButton(onClick = {
@@ -282,50 +330,65 @@ fun NetworkConfigPage() {
                     var servers by remember { mutableStateOf(cfg.servers.toMutableList()) }
                     var newUrl by remember { mutableStateOf("") }
 
-                    AlertDialog(
+                    AppDialog(
+                        title = "管理入口服务器",
                         onDismissRequest = { showServerDialog = false },
-                        title = { Text("管理入口服务器") },
-                        text = {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    OutlinedTextField(
-                                        value = newUrl, onValueChange = { newUrl = it },
-                                        placeholder = { Text("wss://example.com") },
-                                        singleLine = true, modifier = Modifier.weight(1f)
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Button(onClick = {
-                                        if (newUrl.isNotBlank()) { servers.add(newUrl.trim()); newUrl = "" }
-                                    }) { Text("添加") }
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                if (servers.isEmpty()) {
-                                    Text("暂无服务器", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                } else {
-                                    val curServers = servers.toList()
-                                    curServers.forEachIndexed { idx, server ->
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(server, fontSize = 13.sp, fontFamily = FontFamily.Monospace,
-                                                modifier = Modifier.weight(1f), maxLines = 1)
-                                            IconButton(onClick = {
-                                                servers = servers.toMutableList().also { it.removeAt(idx) }
-                                            }) {
-                                                Icon(Icons.Default.DeleteOutline, contentDescription = "删除", modifier = Modifier.size(18.dp))
-                                            }
+                        confirmText = "确定",
+                        icon = AppIcons.Dns,
+                        onConfirm = {
+                            cfg.servers = servers; saveConfigs(); showServerDialog = false
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = newUrl,
+                                onValueChange = { newUrl = it },
+                                placeholder = { Text("wss://example.com") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    if (newUrl.isNotBlank()) { servers.add(newUrl.trim()); newUrl = "" }
+                                },
+                                shape = RoundedCornerShape(999.dp),
+                                modifier = Modifier.height(46.dp)
+                            ) {
+                                Text("添加")
+                            }
+                        }
+                        if (servers.isEmpty()) {
+                            Text("暂无服务器", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            val curServers = servers.toList()
+                            curServers.forEachIndexed { idx, server ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.background
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            server,
+                                            fontSize = 13.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier.weight(1f),
+                                            maxLines = 1
+                                        )
+                                        IconButton(onClick = {
+                                            servers = servers.toMutableList().also { it.removeAt(idx) }
+                                        }) {
+                                            AppIcon(AppIcons.Delete, contentDescription = "删除", modifier = Modifier.size(18.dp))
                                         }
                                     }
                                 }
                             }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                cfg.servers = servers; saveConfigs(); showServerDialog = false
-                            }) { Text("确定") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showServerDialog = false }) { Text("取消") }
                         }
-                    )
+                    }
                 }
 
                 // 高级设置标题
@@ -335,14 +398,14 @@ fun NetworkConfigPage() {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                        AppIcon(AppIcons.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("高级设置", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Icon(
-                            Icons.Default.ExpandMore,
+                        AppIcon(
+                            AppIcons.ExpandMore,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp).let { mod ->
                             val rotation by animateFloatAsState(
@@ -358,23 +421,32 @@ fun NetworkConfigPage() {
                 // 高级设置内容
                 AnimatedVisibility(visible = showAdvanced) {
                     if (selectedIndex in configs.indices) {
-                        Card {
-                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                                 SectionLabel("协议与传输")
                                 CustomSwitch("KCP 代理", "启用 KCP 代理入站", configs[selectedIndex].enableKcpProxy) { configs[selectedIndex].enableKcpProxy = it; forceRecompose() }
                                 CustomSwitch("禁用 KCP 入站", configs[selectedIndex].disableKcpInput) { configs[selectedIndex].disableKcpInput = it; forceRecompose() }
                                 CustomSwitch("QUIC 代理", "启用 QUIC 代理入站", configs[selectedIndex].enableQuicProxy) { configs[selectedIndex].enableQuicProxy = it; forceRecompose() }
                                 CustomSwitch("禁用 QUIC 入站", configs[selectedIndex].disableQuicInput) { configs[selectedIndex].disableQuicInput = it; forceRecompose() }
+                                CustomSwitch("禁用中继 KCP", configs[selectedIndex].disableRelayKcp) { configs[selectedIndex].disableRelayKcp = it; forceRecompose() }
+                                CustomSwitch("禁用中继 QUIC", configs[selectedIndex].disableRelayQuic) { configs[selectedIndex].disableRelayQuic = it; forceRecompose() }
+                                CustomSwitch("允许中继外部网络 KCP", configs[selectedIndex].enableRelayForeignNetworkKcp) { configs[selectedIndex].enableRelayForeignNetworkKcp = it; forceRecompose() }
+                                CustomSwitch("允许中继外部网络 QUIC", configs[selectedIndex].enableRelayForeignNetworkQuic) { configs[selectedIndex].enableRelayForeignNetworkQuic = it; forceRecompose() }
 
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                                 SectionLabel("网络与连接")
                                 CustomSwitch("禁用 UDP 打孔", configs[selectedIndex].disableUdpHolePunching) { configs[selectedIndex].disableUdpHolePunching = it; forceRecompose() }
+                                CustomSwitch("禁用 TCP 打孔", configs[selectedIndex].disableTcpHolePunching) { configs[selectedIndex].disableTcpHolePunching = it; forceRecompose() }
+                                CustomSwitch("禁用 UPnP/NAT-PMP", configs[selectedIndex].disableUpnp) { configs[selectedIndex].disableUpnp = it; forceRecompose() }
                                 CustomSwitch("禁用对称 NAT 打孔", configs[selectedIndex].disableSymHolePunching) { configs[selectedIndex].disableSymHolePunching = it; forceRecompose() }
                                 CustomSwitch("禁用 P2P", configs[selectedIndex].disableP2p) { configs[selectedIndex].disableP2p = it; forceRecompose() }
+                                CustomSwitch("需要 P2P", configs[selectedIndex].needP2p) { configs[selectedIndex].needP2p = it; forceRecompose() }
+                                CustomSwitch("懒 P2P", configs[selectedIndex].lazyP2p) { configs[selectedIndex].lazyP2p = it; forceRecompose() }
+                                CustomSwitch("仅 P2P", configs[selectedIndex].p2pOnly) { configs[selectedIndex].p2pOnly = it; forceRecompose() }
                                 CustomSwitch("禁用 IPv6", configs[selectedIndex].disableIpv6) { configs[selectedIndex].disableIpv6 = it; forceRecompose() }
                                 CustomSwitch("延迟优先", "优先选择延迟最低的路径", configs[selectedIndex].latencyFirst) { configs[selectedIndex].latencyFirst = it; forceRecompose() }
 
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                                 SectionLabel("高级选项")
                                 CustomSwitch("加密", "启用网络加密", configs[selectedIndex].enableEncryption) { configs[selectedIndex].enableEncryption = it; forceRecompose() }
                                 CustomSwitch("出口节点", "将本机作为网络出口", configs[selectedIndex].enableExitNode) { configs[selectedIndex].enableExitNode = it; forceRecompose() }
@@ -385,19 +457,39 @@ fun NetworkConfigPage() {
                                 CustomSwitch("私有模式", "仅允许白名单节点加入", configs[selectedIndex].privateMode) { configs[selectedIndex].privateMode = it; forceRecompose() }
                                 CustomSwitch("中转所有 RPC", configs[selectedIndex].relayAllPeerRpc) { configs[selectedIndex].relayAllPeerRpc = it; forceRecompose() }
                                 CustomSwitch("接受 DNS", configs[selectedIndex].acceptDns) { configs[selectedIndex].acceptDns = it; forceRecompose() }
+                                CustomSwitch("转发 UDP 广播", "改善依赖局域网发现的软件兼容性", configs[selectedIndex].enableUdpBroadcastRelay) { configs[selectedIndex].enableUdpBroadcastRelay = it; forceRecompose() }
                                 CustomSwitch("禁用 TUN", configs[selectedIndex].noTun) { configs[selectedIndex].noTun = it; forceRecompose() }
 
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                                SectionLabel("白名单")
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                                SectionLabel("设备与协议")
+                                OutlinedTextField(value = devNameText, onValueChange = { devNameText = it; saveCurrentConfig() }, label = { Text("TUN 设备名") }, placeholder = { Text("留空使用默认") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(value = mtuText, onValueChange = { mtuText = it; saveCurrentConfig() }, label = { Text("MTU") }, placeholder = { Text("1-1380，留空不指定") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(value = defaultProtocolText, onValueChange = { defaultProtocolText = it; saveCurrentConfig() }, label = { Text("默认协议") }, placeholder = { Text("udp, tcp, wg, ws, wss") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(value = encryptionAlgorithmText, onValueChange = { encryptionAlgorithmText = it; saveCurrentConfig() }, label = { Text("加密算法") }, placeholder = { Text("aes-gcm, xor, chacha20 ...") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                                SectionLabel("路由与白名单")
                                 OutlinedTextField(value = listenAddressesText, onValueChange = { listenAddressesText = it; saveCurrentConfig() }, label = { Text("监听地址（逗号分隔）") }, placeholder = { Text("tcp://0.0.0.0:11010, udp://0.0.0.0:11010") }, maxLines = 2, modifier = Modifier.fillMaxWidth())
 
-                                Spacer(Modifier.height(6.dp))
+                                Spacer(Modifier.height(5.dp))
                                 OutlinedTextField(value = proxyNetworksText, onValueChange = { proxyNetworksText = it; saveCurrentConfig() }, label = { Text("代理网络 CIDR（逗号分隔）") }, placeholder = { Text("192.168.1.0/24") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-                                Spacer(Modifier.height(6.dp))
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(value = customRoutesText, onValueChange = { customRoutesText = it; saveCurrentConfig() }, label = { Text("自定义路由（逗号分隔）") }, placeholder = { Text("192.168.1.0/24") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(value = exitNodesText, onValueChange = { exitNodesText = it; saveCurrentConfig() }, label = { Text("出口节点（逗号分隔）") }, placeholder = { Text("peer-id") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(Modifier.height(5.dp))
                                 CustomSwitch("启用外部网络白名单", configs[selectedIndex].foreignNetworkWhitelistEnabled) { configs[selectedIndex].foreignNetworkWhitelistEnabled = it; forceRecompose() }
                                 if (configs[selectedIndex].foreignNetworkWhitelistEnabled) {
-                                    Spacer(Modifier.height(6.dp))
+                                    Spacer(Modifier.height(5.dp))
                                     OutlinedTextField(value = whitelistText, onValueChange = { whitelistText = it; saveCurrentConfig() }, label = { Text("外部网络白名单（逗号分隔）") }, placeholder = { Text("network1, network2") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                 }
                             }
@@ -487,22 +579,22 @@ fun NetworkConfigPage() {
                             }
                         },
                         enabled = !isLoading,
-                        modifier = Modifier.weight(1f).height(50.dp),
+                        modifier = Modifier.weight(1f).height(44.dp),
                         colors = if (!isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                  else ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
                     ) {
-                        Icon(if (!isRunning) Icons.Default.PlayArrow else Icons.Default.Stop, contentDescription = null)
+                        AppIcon(if (!isRunning) AppIcons.Play else AppIcons.Stop, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
                         Text(if (isLoading) "处理中..." else if (!isRunning) "启动网络" else "停止网络")
                     }
 
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(10.dp))
 
                     OutlinedButton(
                         onClick = { /* 一键联机可通过底部导航访问 */ },
-                        modifier = Modifier.weight(1f).height(50.dp)
+                        modifier = Modifier.weight(1f).height(44.dp)
                     ) {
-                        Icon(Icons.Default.FlashOn, contentDescription = null)
+                        AppIcon(AppIcons.Flash, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
                         Text("一键联机")
                     }
@@ -512,8 +604,22 @@ fun NetworkConfigPage() {
 
                 // 节点监控
                 if (isRunning) {
+                    val localNode = nodes.firstOrNull { it.isLocal }
+
+                    DirectConnectCard(
+                        node = localNode,
+                        onCopyIp = {
+                            localNode?.virtualIp?.takeIf { it.isNotBlank() }?.let(::copyVirtualIp)
+                        },
+                        onShareIp = {
+                            localNode?.takeIf { it.virtualIp.isNotBlank() }?.let(::shareVirtualIp)
+                        }
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.MonitorHeart, contentDescription = null, modifier = Modifier.size(18.dp))
+                        AppIcon(AppIcons.MonitorHeart, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("节点监测", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -522,8 +628,8 @@ fun NetworkConfigPage() {
                     }
                     Spacer(Modifier.height(6.dp))
                     if (nodes.isEmpty()) {
-                        Card {
-                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(18.dp), contentAlignment = Alignment.Center) {
                                 Text("等待节点数据...", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -546,7 +652,7 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun CustomSwitch(label: String, value: Boolean, onChanged: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, modifier = Modifier.weight(1f))
@@ -557,7 +663,7 @@ private fun CustomSwitch(label: String, value: Boolean, onChanged: (Boolean) -> 
 @Composable
 private fun CustomSwitch(label: String, hint: String, value: Boolean, onChanged: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -568,15 +674,98 @@ private fun CustomSwitch(label: String, hint: String, value: Boolean, onChanged:
     }
 }
 
+@Composable
+private fun DirectConnectCard(
+    node: NodeInfo?,
+    onCopyIp: () -> Unit,
+    onShareIp: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppIcon(AppIcons.Lan, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("本机直连地址", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (!node?.virtualIp.isNullOrBlank()) {
+                    TextButton(onClick = onCopyIp) {
+                        AppIcon(AppIcons.Copy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("复制")
+                    }
+                    TextButton(onClick = onShareIp) {
+                        AppIcon(AppIcons.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("分享")
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            if (node?.virtualIp.isNullOrBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "网络已启动，正在获取本机虚拟 IP...",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                val virtualIp = node?.virtualIp.orEmpty()
+                val hostname = node?.hostname.orEmpty()
+
+                Text(
+                    "可复制当前虚拟 IP，在需要手动直连的场景中使用。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(6.dp))
+                SelectionContainer {
+                    Text(
+                        text = virtualIp,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = "设备名: ${hostname.ifEmpty { "本机" }}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+private fun csvToMutableStringList(text: String): MutableList<String> {
+    return text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+}
+
+private fun jsonArrayToMutableStringList(array: JSONArray?, default: List<String> = emptyList()): MutableList<String> {
+    if (array == null) return default.toMutableList()
+
+    val values = mutableListOf<String>()
+    for (index in 0 until array.length()) {
+        val value = array.optString(index, "").trim()
+        if (value.isNotEmpty()) values.add(value)
+    }
+
+    return if (values.isEmpty()) default.toMutableList() else values
+}
+
 private fun loadSavedConfigs(repo: SettingsRepository): MutableList<NetworkConfig> {
     val json = repo.loadNetworkConfigsJson() ?: return mutableListOf(NetworkConfig())
     val list = mutableListOf<NetworkConfig>()
     for (i in 0 until json.length()) {
         val obj = json.optJSONObject(i) ?: continue
-        val arr = obj.optJSONArray("servers")
-        val servers = if (arr != null) mutableListOf<String>().also {
-            for (j in 0 until arr.length()) it.add(arr.optString(j, ""))
-        } else mutableListOf()
         list.add(NetworkConfig(
             instanceName = obj.optString("instance_name", NetworkConfig.generateInstanceName()),
             networkLabel = obj.optString("network_label", ""),
@@ -588,7 +777,44 @@ private fun loadSavedConfigs(repo: SettingsRepository): MutableList<NetworkConfi
             ipv4 = obj.optString("ipv4", ""),
             latencyFirst = obj.optBoolean("latency_first", false),
             privateMode = obj.optBoolean("private_mode", true),
-            servers = servers,
+            servers = jsonArrayToMutableStringList(obj.optJSONArray("servers"), listOf("wss://qtet-public.070219.xyz")),
+            enableKcpProxy = obj.optBoolean("enable_kcp_proxy", true),
+            disableKcpInput = obj.optBoolean("disable_kcp_input", false),
+            noTun = obj.optBoolean("no_tun", false),
+            enableQuicProxy = obj.optBoolean("enable_quic_proxy", false),
+            disableQuicInput = obj.optBoolean("disable_quic_input", false),
+            disableRelayKcp = obj.optBoolean("disable_relay_kcp", false),
+            disableRelayQuic = obj.optBoolean("disable_relay_quic", false),
+            enableRelayForeignNetworkKcp = obj.optBoolean("enable_relay_foreign_network_kcp", false),
+            enableRelayForeignNetworkQuic = obj.optBoolean("enable_relay_foreign_network_quic", false),
+            disableUdpHolePunching = obj.optBoolean("disable_udp_hole_punching", false),
+            disableTcpHolePunching = obj.optBoolean("disable_tcp_hole_punching", false),
+            disableUpnp = obj.optBoolean("disable_upnp", false),
+            needP2p = obj.optBoolean("need_p2p", false),
+            lazyP2p = obj.optBoolean("lazy_p2p", false),
+            p2pOnly = obj.optBoolean("p2p_only", false),
+            multiThread = obj.optBoolean("multi_thread", true),
+            useSmoltcp = obj.optBoolean("use_smoltcp", false),
+            devName = obj.optString("dev_name", ""),
+            mtu = obj.optInt("mtu", 0).takeIf { it in 1..1380 } ?: 0,
+            bindDevice = obj.optBoolean("bind_device", true),
+            disableP2p = obj.optBoolean("disable_p2p", false),
+            enableExitNode = obj.optBoolean("enable_exit_node", false),
+            systemForwarding = obj.optBoolean("system_forwarding", false),
+            disableSymHolePunching = obj.optBoolean("disable_sym_hole_punching", false),
+            disableIpv6 = obj.optBoolean("disable_ipv6", false),
+            relayAllPeerRpc = obj.optBoolean("relay_all_peer_rpc", false),
+            enableEncryption = obj.optBoolean("enable_encryption", true),
+            acceptDns = obj.optBoolean("accept_dns", false),
+            enableUdpBroadcastRelay = obj.optBoolean("enable_udp_broadcast_relay", true),
+            defaultProtocol = obj.optString("default_protocol", "").lowercase(),
+            encryptionAlgorithm = obj.optString("encryption_algorithm", "aes-gcm").ifEmpty { "aes-gcm" }.lowercase(),
+            foreignNetworkWhitelistEnabled = obj.optBoolean("foreign_network_whitelist_enabled", false),
+            foreignNetworkWhitelist = jsonArrayToMutableStringList(obj.optJSONArray("foreign_network_whitelist")),
+            listenAddresses = jsonArrayToMutableStringList(obj.optJSONArray("listen_addresses"), listOf("tcp://0.0.0.0:11010", "udp://0.0.0.0:11010")),
+            proxyNetworks = jsonArrayToMutableStringList(obj.optJSONArray("proxy_networks")),
+            customRoutes = jsonArrayToMutableStringList(obj.optJSONArray("custom_routes")),
+            exitNodes = jsonArrayToMutableStringList(obj.optJSONArray("exit_nodes")),
         ))
     }
     return if (list.isEmpty()) mutableListOf(NetworkConfig()) else list

@@ -27,19 +27,20 @@ fun NodeInfoCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp)
+            .padding(vertical = 3.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 状态指示点
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(9.dp)
                     .clip(CircleShape)
                     .background(
                         if (node.isLocal) MaterialTheme.colorScheme.primary
@@ -52,18 +53,18 @@ fun NodeInfoCard(
                     )
             )
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
 
             // 图标
-            Icon(
-                imageVector = Icons.Outlined.Computer,
+            AppIcon(
+                imageVector = AppIcons.Computer,
                 contentDescription = null,
                 tint = if (node.isLocal) MaterialTheme.colorScheme.primary
                        else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

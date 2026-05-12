@@ -21,9 +21,20 @@ data class NetworkConfig(
     var noTun: Boolean = false, // 设为 false 才会触发 VPN 服务创建 TUN
     var enableQuicProxy: Boolean = false,
     var disableQuicInput: Boolean = false,
+    var disableRelayKcp: Boolean = false,
+    var disableRelayQuic: Boolean = false,
+    var enableRelayForeignNetworkKcp: Boolean = false,
+    var enableRelayForeignNetworkQuic: Boolean = false,
     var disableUdpHolePunching: Boolean = false,
+    var disableTcpHolePunching: Boolean = false,
+    var disableUpnp: Boolean = false,
+    var needP2p: Boolean = false,
+    var lazyP2p: Boolean = false,
+    var p2pOnly: Boolean = false,
     var multiThread: Boolean = true,
     var useSmoltcp: Boolean = false,
+    var devName: String = "",
+    var mtu: Int = 0,
     var bindDevice: Boolean = true,
     var disableP2p: Boolean = false,
     var enableExitNode: Boolean = false,
@@ -33,12 +44,17 @@ data class NetworkConfig(
     var relayAllPeerRpc: Boolean = false,
     var enableEncryption: Boolean = true,
     var acceptDns: Boolean = false,
+    var enableUdpBroadcastRelay: Boolean = true,
+    var defaultProtocol: String = "",
+    var encryptionAlgorithm: String = "aes-gcm",
 
     var foreignNetworkWhitelistEnabled: Boolean = false,
     var foreignNetworkWhitelist: MutableList<String> = mutableListOf(),
     var listenAddresses: MutableList<String> =
         mutableListOf("tcp://0.0.0.0:11010", "udp://0.0.0.0:11010"),
-    var proxyNetworks: MutableList<String> = mutableListOf()
+    var proxyNetworks: MutableList<String> = mutableListOf(),
+    var customRoutes: MutableList<String> = mutableListOf(),
+    var exitNodes: MutableList<String> = mutableListOf()
 ) {
     fun toToml(): String = buildString {
         appendLine("""instance_name = "$instanceName"""")
@@ -52,6 +68,20 @@ data class NetworkConfig(
             appendLine()
             appendLine("listeners = [")
             listenAddresses.forEach { appendLine(""""$it",""") }
+            appendLine("]")
+        }
+
+        if (customRoutes.isNotEmpty()) {
+            appendLine()
+            appendLine("routes = [")
+            customRoutes.forEach { appendLine(""""$it",""") }
+            appendLine("]")
+        }
+
+        if (exitNodes.isNotEmpty()) {
+            appendLine()
+            appendLine("exit_nodes = [")
+            exitNodes.forEach { appendLine(""""$it",""") }
             appendLine("]")
         }
 
@@ -80,6 +110,12 @@ data class NetworkConfig(
         appendLine("enable_exit_node = ${if (enableExitNode) "true" else "false"}")
         appendLine("no_tun = ${if (noTun) "true" else "false"}")
         appendLine("use_smoltcp = ${if (useSmoltcp) "true" else "false"}")
+        if (devName.isNotEmpty()) {
+            appendLine("""dev_name = "$devName"""")
+        }
+        if (mtu > 0) {
+            appendLine("mtu = $mtu")
+        }
 
         if (foreignNetworkWhitelistEnabled) {
             appendLine("""foreign_network_whitelist = "${foreignNetworkWhitelist.joinToString(" ")}"""")
@@ -89,15 +125,29 @@ data class NetworkConfig(
         appendLine("disable_quic_input = ${if (disableQuicInput) "true" else "false"}")
         appendLine("enable_kcp_proxy = ${if (enableKcpProxy) "true" else "false"}")
         appendLine("disable_kcp_input = ${if (disableKcpInput) "true" else "false"}")
+        appendLine("disable_relay_kcp = ${if (disableRelayKcp) "true" else "false"}")
+        appendLine("disable_relay_quic = ${if (disableRelayQuic) "true" else "false"}")
+        appendLine("enable_relay_foreign_network_kcp = ${if (enableRelayForeignNetworkKcp) "true" else "false"}")
+        appendLine("enable_relay_foreign_network_quic = ${if (enableRelayForeignNetworkQuic) "true" else "false"}")
         appendLine("bind_device = ${if (bindDevice) "true" else "false"}")
         appendLine("private_mode = ${if (privateMode) "true" else "false"}")
         appendLine("disable_p2p = ${if (disableP2p) "true" else "false"}")
+        appendLine("need_p2p = ${if (needP2p) "true" else "false"}")
+        appendLine("lazy_p2p = ${if (lazyP2p) "true" else "false"}")
+        appendLine("p2p_only = ${if (p2pOnly) "true" else "false"}")
         appendLine("multi_thread = ${if (multiThread) "true" else "false"}")
         appendLine("accept_dns = ${if (acceptDns) "true" else "false"}")
+        appendLine("enable_udp_broadcast_relay = ${if (enableUdpBroadcastRelay) "true" else "false"}")
         appendLine("disable_sym_hole_punching = ${if (disableSymHolePunching) "true" else "false"}")
         appendLine("relay_all_peer_rpc = ${if (relayAllPeerRpc) "true" else "false"}")
         appendLine("disable_udp_hole_punching = ${if (disableUdpHolePunching) "true" else "false"}")
+        appendLine("disable_tcp_hole_punching = ${if (disableTcpHolePunching) "true" else "false"}")
+        appendLine("disable_upnp = ${if (disableUpnp) "true" else "false"}")
         appendLine("proxy_forward_by_system = ${if (systemForwarding) "true" else "false"}")
+        if (defaultProtocol.isNotEmpty()) {
+            appendLine("""default_protocol = "$defaultProtocol"""")
+        }
+        appendLine("""encryption_algorithm = "$encryptionAlgorithm"""")
     }
 
     fun toJson(): Map<String, Any?> = mapOf(
@@ -117,9 +167,20 @@ data class NetworkConfig(
         "no_tun" to noTun,
         "enable_quic_proxy" to enableQuicProxy,
         "disable_quic_input" to disableQuicInput,
+        "disable_relay_kcp" to disableRelayKcp,
+        "disable_relay_quic" to disableRelayQuic,
+        "enable_relay_foreign_network_kcp" to enableRelayForeignNetworkKcp,
+        "enable_relay_foreign_network_quic" to enableRelayForeignNetworkQuic,
         "disable_udp_hole_punching" to disableUdpHolePunching,
+        "disable_tcp_hole_punching" to disableTcpHolePunching,
+        "disable_upnp" to disableUpnp,
+        "need_p2p" to needP2p,
+        "lazy_p2p" to lazyP2p,
+        "p2p_only" to p2pOnly,
         "multi_thread" to multiThread,
         "use_smoltcp" to useSmoltcp,
+        "dev_name" to devName,
+        "mtu" to mtu,
         "bind_device" to bindDevice,
         "disable_p2p" to disableP2p,
         "enable_exit_node" to enableExitNode,
@@ -129,10 +190,15 @@ data class NetworkConfig(
         "relay_all_peer_rpc" to relayAllPeerRpc,
         "enable_encryption" to enableEncryption,
         "accept_dns" to acceptDns,
+        "enable_udp_broadcast_relay" to enableUdpBroadcastRelay,
+        "default_protocol" to defaultProtocol,
+        "encryption_algorithm" to encryptionAlgorithm,
         "foreign_network_whitelist_enabled" to foreignNetworkWhitelistEnabled,
         "foreign_network_whitelist" to foreignNetworkWhitelist,
         "listen_addresses" to listenAddresses,
-        "proxy_networks" to proxyNetworks
+        "proxy_networks" to proxyNetworks,
+        "custom_routes" to customRoutes,
+        "exit_nodes" to exitNodes
     )
 
     companion object {

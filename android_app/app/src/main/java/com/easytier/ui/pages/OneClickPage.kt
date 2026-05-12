@@ -12,8 +12,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.data.NetworkConfig
+import com.easytier.ui.components.AppIcon
+import com.easytier.ui.components.AppIcons
 import com.easytier.service.EasyTierService
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -89,16 +89,16 @@ fun OneClickPage() {
         topBar = { CompactTopBar("一键联机") }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 模式切换
-            Card {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Row(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Box(Modifier.weight(1f)) {
                 ModeButton(
                     selected = isHostMode,
-                    icon = Icons.Default.Lan,
+                    icon = AppIcons.Lan,
                     label = "创建网络（房主）",
                     onClick = { isHostMode = true; statusMessage = "" }
                 )
@@ -106,7 +106,7 @@ fun OneClickPage() {
             Box(Modifier.weight(1f)) {
                 ModeButton(
                     selected = !isHostMode,
-                    icon = Icons.Default.GroupAdd,
+                    icon = AppIcons.GroupAdd,
                     label = "加入网络（房客）",
                     onClick = { isHostMode = false; statusMessage = "" }
                 )
@@ -234,11 +234,11 @@ private fun ModeButton(selected: Boolean, icon: androidx.compose.ui.graphics.vec
     )
     Surface(onClick = onClick, shape = RoundedCornerShape(10.dp), color = bgColor, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
+            AppIcon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = textColor)
         }
@@ -251,31 +251,31 @@ private fun HostMode(
     hostConfig: NetworkConfig?, statusMessage: String, statusIsError: Boolean,
     onStart: () -> Unit, onStop: () -> Unit, onCopy: () -> Unit
 ) {
-    Card {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                if (isRunning) Icons.Default.Wifi else Icons.Default.WifiOff,
+            AppIcon(
+                if (isRunning) AppIcons.Wifi else AppIcons.WifiOff,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
                 tint = if (isRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(if (isRunning) "网络运行中" else "点击下方按钮创建网络", fontWeight = FontWeight.SemiBold)
             if (isRunning && hostConfig != null) {
                 Text("网络: ${hostConfig.networkName}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(14.dp))
             Button(
                 onClick = { if (isRunning) onStop() else onStart() },
                 enabled = !isLoading,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
                 colors = if (isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
                          else ButtonDefaults.buttonColors()
             ) {
-                Icon(if (isRunning) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
+                AppIcon(if (isRunning) AppIcons.Stop else AppIcons.Play, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text(when { isLoading && isRunning -> "停止中..."; isLoading -> "启动中..."
                      isRunning -> "停止网络"; else -> "启动网络" })
@@ -284,25 +284,25 @@ private fun HostMode(
     }
 
     if (generatedCode.isNotEmpty()) {
-        Card {
-            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    AppIcon(AppIcons.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("联机编码", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     IconButton(onClick = onCopy) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "复制", modifier = Modifier.size(20.dp))
+                        AppIcon(AppIcons.Copy, contentDescription = "复制", modifier = Modifier.size(20.dp))
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    SelectionContainer { Text(generatedCode, fontFamily = FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(12.dp)) }
+                    SelectionContainer { Text(generatedCode, fontFamily = FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(10.dp)) }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Text("将此编码发送给好友，对方在一键联机页面选择\"加入网络\"并粘贴即可", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -316,26 +316,26 @@ private fun GuestMode(
     statusMessage: String, statusIsError: Boolean,
     onJoin: () -> Unit, onLeave: () -> Unit
 ) {
-    Card {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(18.dp))
+                AppIcon(AppIcons.VpnKey, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("输入联机编码", fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value = guestCode, onValueChange = onGuestCodeChange,
                 placeholder = { Text("粘贴房主分享的编码") },
-                modifier = Modifier.fillMaxWidth().height(100.dp),
+                modifier = Modifier.fillMaxWidth().height(88.dp),
                 textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onJoin, enabled = !isLoading && !isRunning,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                modifier = Modifier.fillMaxWidth().height(44.dp)
             ) {
-                Icon(Icons.Default.Login, contentDescription = null)
+                AppIcon(AppIcons.Login, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text(if (isLoading) "加入中..." else "加入网络")
             }
@@ -343,10 +343,10 @@ private fun GuestMode(
     }
 
     if (isRunning && hostConfig != null) {
-        Card {
-            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
-                Spacer(Modifier.width(12.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                AppIcon(AppIcons.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+                Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("已加入网络", fontWeight = FontWeight.SemiBold)
                     Text(hostConfig.networkName, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

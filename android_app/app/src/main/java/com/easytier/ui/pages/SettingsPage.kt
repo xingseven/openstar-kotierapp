@@ -1,8 +1,9 @@
 ﻿package com.easytier.ui.pages
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -10,7 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easytier.BuildConfig
 import com.easytier.service.SettingsRepository
+import com.easytier.ui.components.AppDialog
+import com.easytier.ui.components.AppIcon
+import com.easytier.ui.components.AppIcons
 import com.easytier.ui.components.CompactTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,29 +32,37 @@ fun SettingsPage() {
     var showClearDialog by remember { mutableStateOf(false) }
 
     if (showClearDialog) {
-        AlertDialog(
+        AppDialog(
+            title = "清除所有数据",
             onDismissRequest = { showClearDialog = false },
-            title = { Text("清除所有数据") },
-            text = { Text("这将清除所有配置、服务器收藏和设置。此操作不可撤销。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    repo.clearAll()
-                    followSystem = true; darkMode = false; startOnBoot = false
-                    autoReconnect = false; notifyOnConnect = true
-                    notifyOnDisconnect = true; logLevel = "info"
-                    showClearDialog = false
-                }) { Text("清除", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { showClearDialog = false }) { Text("取消") } }
-        )
+            confirmText = "清除",
+            destructive = true,
+            onConfirm = {
+                repo.clearAll()
+                followSystem = true; darkMode = false; startOnBoot = false
+                autoReconnect = false; notifyOnConnect = true
+                notifyOnDisconnect = true; logLevel = "info"
+                showClearDialog = false
+            }
+        ) {
+            Text(
+                "这将清除所有配置、服务器收藏和设置。此操作不可撤销。",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 
     Scaffold(
         topBar = { CompactTopBar("设置") }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SectionHeader("通用")
             SettingsCard {
@@ -90,11 +103,11 @@ fun SettingsPage() {
             SectionHeader("日志")
             SettingsCard {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Terminal, contentDescription = null, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(12.dp))
+                    AppIcon(AppIcons.Terminal, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text("日志级别", modifier = Modifier.weight(1f), fontSize = 13.sp)
                     var expanded by remember { mutableStateOf(false) }
                     Box {
@@ -112,32 +125,30 @@ fun SettingsPage() {
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("查看运行日志", fontSize = 13.sp) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
 
             SectionHeader("关于")
             SettingsCard {
-                InfoRow("版本", "1.0.0")
+                InfoRow("版本", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
                 InfoRow("运行平台", "Android")
                 InfoRow("后端", "EasyTier JNI")
             }
-
-            Spacer(Modifier.weight(1f))
 
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TextButton(
                     onClick = { showClearDialog = true },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                    AppIcon(AppIcons.DeleteSweep, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text("清除所有数据")
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
@@ -145,7 +156,7 @@ fun SettingsPage() {
 @Composable
 private fun SectionHeader(title: String) {
     Text(
-        title, style = MaterialTheme.typography.labelMedium,
+        title, style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 4.dp)
     )
@@ -153,13 +164,18 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Card { Column(modifier = Modifier.padding(horizontal = 4.dp), content = content) }
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp), content = content)
+    }
 }
 
 @Composable
 private fun SettingSwitch(label: String, value: Boolean, hint: String? = null, onChanged: (Boolean) -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

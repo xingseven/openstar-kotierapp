@@ -3,6 +3,13 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val appVersionCode = 4004
+val appVersionName = "4.0.4"
+
+base {
+    archivesName.set("EasyTier-v${appVersionName}-${appVersionCode}")
+}
+
 android {
     namespace = "com.easytier"
     compileSdk = 35
@@ -11,8 +18,8 @@ android {
         applicationId = "com.easytier.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4003
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -21,6 +28,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

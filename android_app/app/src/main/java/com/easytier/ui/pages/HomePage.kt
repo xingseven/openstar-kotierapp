@@ -15,28 +15,27 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.annotation.DrawableRes
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easytier.R
 
 data class NavItem(
     val label: String,
-    val icon: ImageVector,
-    val selectedIcon: ImageVector
+    @DrawableRes val iconRes: Int,
+    @DrawableRes val selectedIconRes: Int = iconRes
 )
 
 private val navItems = listOf(
-    NavItem("网络", Icons.Outlined.Lan, Icons.Filled.Lan),
-    NavItem("一键联机", Icons.Outlined.FlashOn, Icons.Filled.FlashOn),
-    NavItem("服务器", Icons.Outlined.Dns, Icons.Filled.Dns),
-    NavItem("设置", Icons.Outlined.Settings, Icons.Filled.Settings),
+    NavItem("网络", R.drawable.ic_nav_network),
+    NavItem("一键联机", R.drawable.ic_nav_online),
+    NavItem("服务器", R.drawable.ic_nav_server),
+    NavItem("设置", R.drawable.ic_nav_setup),
 )
 
 @Composable
@@ -85,7 +84,7 @@ fun HomePage() {
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                item.selectedIcon,
+                                                painter = painterResource(item.selectedIconRes),
                                                 contentDescription = item.label,
                                                 tint = contentColor,
                                                 modifier = Modifier.size(20.dp)
@@ -94,7 +93,7 @@ fun HomePage() {
                                     }
                                 } else {
                                     Icon(
-                                        item.icon,
+                                        painter = painterResource(item.iconRes),
                                         contentDescription = item.label,
                                         tint = contentColor,
                                         modifier = Modifier.size(20.dp)

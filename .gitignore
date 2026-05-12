@@ -6,9 +6,8 @@ android_app/local.properties
 *.iml
 .idea/
 
-# Qt App - 构建输出
-qt_app/build*/
-qt_app/*/android-build/
+# Qt App
+qt_app/
 
 # OS
 .DS_Store
@@ -16,4 +15,3 @@ Thumbs.db
 
 # Claude
 .claude/
-build

@@ -59,16 +59,30 @@ object EasyTierService {
 
         try {
             val toml = config.toToml()
+            val redactedToml = redactTomlSecrets(toml)
+            LogService.info("启动网络实例: ${config.instanceName}", source = TAG)
+            LogService.debug("启动配置:\n$redactedToml", source = TAG)
+
+            if (!parseConfig(toml)) {
+                val err = EasyTierJNI.getLastError() ?: "parse config failed"
+                LogService.error("配置校验失败: ${config.instanceName}, $err", source = TAG)
+                return@withContext EasyTierResult.fail(err)
+            }
+
+            LogService.info("配置校验通过: ${config.instanceName}", source = TAG)
             val result = EasyTierJNI.runNetworkInstance(toml)
             if (result == 0) {
                 config.isRunning = true
+                LogService.info("网络实例已启动: ${config.instanceName}", source = TAG)
                 EasyTierResult.ok()
             } else {
                 val err = EasyTierJNI.getLastError() ?: "unknown error"
+                LogService.error("网络实例启动失败: ${config.instanceName}, $err", source = TAG)
                 EasyTierResult.fail(err)
             }
         } catch (e: Exception) {
             Log.e(TAG, "startNetwork error", e)
+            LogService.error("startNetwork 异常: ${config.instanceName}, ${e.message}", source = TAG)
             EasyTierResult.fail(e.message ?: "exception")
         }
     }
@@ -96,10 +110,17 @@ object EasyTierService {
                 EasyTierJNI.retainNetworkInstance(namesToRetain.toTypedArray())
             }
 
-            if (result == 0) EasyTierResult.ok()
-            else EasyTierResult.fail(EasyTierJNI.getLastError() ?: "unknown")
+            if (result == 0) {
+                LogService.info("网络实例已停止: $instanceName", source = TAG)
+                EasyTierResult.ok()
+            } else {
+                val err = EasyTierJNI.getLastError() ?: "unknown"
+                LogService.error("网络实例停止失败: $instanceName, $err", source = TAG)
+                EasyTierResult.fail(err)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "stopNetwork error", e)
+            LogService.error("stopNetwork 异常: $instanceName, ${e.message}", source = TAG)
             EasyTierResult.fail(e.message ?: "exception")
         }
     }
@@ -119,7 +140,13 @@ object EasyTierService {
 
         try {
             val jsonStr = EasyTierJNI.collectNetworkInfos(16) ?: return@withContext emptyList()
+
+            // 调试：打印原始 JSON
+            Log.i(TAG, "collectNetworkInfos raw: $jsonStr")
+
             val map = JSONObject(jsonStr).optJSONObject("map") ?: return@withContext emptyList()
+
+            Log.i(TAG, "map keys (${map.length()}): ${map.keys().asSequence().toList()}")
 
             val nodes = mutableListOf<NodeInfo>()
             map.keys().forEach { key ->
@@ -152,6 +179,7 @@ object EasyTierService {
                 // 遍历 routes 构建其他节点信息
                 val myPeerId = nodeObj?.optLong("peer_id", -1L) ?: -1L
                 val routes = value.optJSONArray("routes")
+                Log.i(TAG, "本机 peerId=$myPeerId, peers=${peerMap.size}, routes=${routes?.length() ?: 0}")
                 if (routes != null) {
                     for (i in 0 until routes.length()) {
                         val route = routes.optJSONObject(i) ?: continue
@@ -256,5 +284,9 @@ object EasyTierService {
 
     private fun intToIp(addr: Int): String {
         return "${(addr shr 24) and 0xFF}.${(addr shr 16) and 0xFF}.${(addr shr 8) and 0xFF}.${addr and 0xFF}"
+    }
+
+    private fun redactTomlSecrets(toml: String): String {
+        return toml.replace(Regex("""(?m)^(\s*network_secret\s*=\s*").*(")$"""), "$1***$2")
     }
 }
