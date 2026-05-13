@@ -3,11 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val appVersionCode = 4004
-val appVersionName = "4.0.4"
+val appVersionCode = 4014
+val appVersionName = "4.1.4"
 
 base {
-    archivesName.set("EasyTier-v${appVersionName}-${appVersionCode}")
+    archivesName.set("vetier-v${appVersionName}-${appVersionCode}")
 }
 
 android {

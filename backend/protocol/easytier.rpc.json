@@ -1,0 +1,127 @@
+{
+  "name": "easytier-backend-protocol",
+  "version": "0.1.0",
+  "transport": "local-jsonrpc",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": "string",
+    "method": "string",
+    "params": "object",
+    "result": "object",
+    "error": {
+      "code": "integer",
+      "message": "string",
+      "data": "object"
+    }
+  },
+  "methods": {
+    "backend.ping": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/EmptyObject"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/PingResult"
+      }
+    },
+    "network.validate": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/NetworkConfig"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/ValidationResult"
+      }
+    },
+    "network.start": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/NetworkConfig"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/NetworkStartResult"
+      }
+    },
+    "network.stop": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/StopRequest"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/StopResult"
+      }
+    },
+    "network.list": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/EmptyObject"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/NetworkListResult"
+      }
+    },
+    "network.state": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/StateRequest"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/NetworkStateResult"
+      }
+    },
+    "vpn.attach": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/VpnAttachRequest"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/VpnAttachResult"
+      }
+    },
+    "vpn.detach": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/VpnDetachRequest"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/VpnDetachResult"
+      }
+    },
+    "log.subscribe": {
+      "params": {
+        "$ref": "../core/easytier.models.json#/models/LogSubscribeRequest"
+      },
+      "result": {
+        "$ref": "../core/easytier.models.json#/models/SubscribeResult"
+      }
+    }
+  },
+  "events": {
+    "network.instance_changed": {
+      "$ref": "../core/easytier.models.json#/models/InstanceChangedEvent"
+    },
+    "network.node_changed": {
+      "$ref": "../core/easytier.models.json#/models/NodeChangedEvent"
+    },
+    "network.route_changed": {
+      "$ref": "../core/easytier.models.json#/models/RouteChangedEvent"
+    },
+    "network.log": {
+      "$ref": "../core/easytier.models.json#/models/LogEvent"
+    }
+  },
+  "errors": [
+    {
+      "code": -32001,
+      "name": "backend_unavailable",
+      "message": "backend is not available"
+    },
+    {
+      "code": -32002,
+      "name": "validation_failed",
+      "message": "config validation failed"
+    },
+    {
+      "code": -32003,
+      "name": "network_start_failed",
+      "message": "network start failed"
+    },
+    {
+      "code": -32004,
+      "name": "network_stop_failed",
+      "message": "network stop failed"
+    }
+  ]
+}

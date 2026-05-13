@@ -24,13 +24,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easytier.backend.decodeConnectionCode
+import com.easytier.backend.encodeConnectionCode
+import com.easytier.backend.generateRoomCredentials
 import com.easytier.data.NetworkConfig
 import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
 import com.easytier.service.EasyTierService
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,13 +127,7 @@ fun OneClickPage() {
                         scope.launch {
                             setLoading(true); setStatus("", false)
                             val (netId, password) = generateRoomCredentials()
-                            val config = NetworkConfig(
-                                hostname = "Host-${randomSuffix(4)}",
-                                networkName = netId,
-                                networkSecret = password,
-                                dhcp = false, privateMode = true,
-                                ipv4 = "11.45.14.1"
-                            )
+                                val config = NetworkConfig.createOneClickHostConfig(netId, password)
                             val result = EasyTierService.startNetwork(config)
                             if (!result.success) {
                                 setLoading(false); setStatus("启动失败: ${result.errorMessage}", true); return@launch
@@ -180,13 +175,7 @@ fun OneClickPage() {
                                 if (netId.isEmpty() || password.isEmpty()) {
                                     setLoading(false); setStatus("联机码无效", true); return@launch
                                 }
-                                val config = NetworkConfig(
-                                    hostname = "Guest-${randomSuffix(4)}",
-                                    networkName = netId,
-                                    networkSecret = password,
-                                    dhcp = true, privateMode = true,
-                                    servers = mutableListOf("wss://qtet-public.070219.xyz", "tcp://qtet-public2.070219.xyz:27773")
-                                )
+                                val config = NetworkConfig.createOneClickGuestConfig(netId, password)
                                 val result = EasyTierService.startNetwork(config)
                                 if (!result.success) {
                                     setLoading(false); setStatus("加入失败: ${result.errorMessage}", true); return@launch
@@ -357,75 +346,3 @@ private fun GuestMode(
     }
 }
 
-// ── Qt-EasyTier 兼容 Base32 ──
-// 字母表匹配 Qt 版：不含 I、O，包含 8、9
-private val BASE32 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-private fun base32Encode(data: ByteArray): String {
-    val r = StringBuilder()
-    var buf = 0; var bits = 0
-    for (b in data) {
-        buf = (buf shl 8) or (b.toInt() and 0xFF)
-        bits += 8
-        while (bits >= 5) {
-            r.append(BASE32[(buf shr (bits - 5)) and 0x1F])
-            bits -= 5
-        }
-    }
-    if (bits > 0) r.append(BASE32[(buf shl (5 - bits)) and 0x1F])
-    return r.toString()
-}
-
-private fun base32Decode(s: String): ByteArray {
-    val r = mutableListOf<Byte>()
-    var buf = 0; var bits = 0
-    for (ch in s.uppercase()) {
-        val idx = BASE32.indexOf(ch); if (idx < 0) continue
-        buf = (buf shl 5) or idx; bits += 5
-        if (bits >= 8) { r.add(((buf shr (bits - 8)) and 0xFF).toByte()); bits -= 8 }
-    }
-    return r.toByteArray()
-}
-
-// ── Qt-EasyTier 兼容联机码 ──
-private const val NET_ID_PREFIX = "QE"
-
-private fun generateRoomCredentials(): Pair<String, String> {
-    val charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789*&#$!"
-    val netIdBytes = ByteArray(7).apply {
-        this[0] = 'Q'.code.toByte(); this[1] = 'E'.code.toByte()
-        for (i in 2..6) this[i] = charset[Random.nextInt(charset.length)].code.toByte()
-    }
-    val pwdBytes = ByteArray(8) { charset[Random.nextInt(charset.length)].code.toByte() }
-    val netId = "QtET-OneClick-" + netIdBytes.decodeToString()
-    val password = pwdBytes.decodeToString()
-    return Pair(netId, password)
-}
-
-private fun encodeConnectionCode(networkId: String, password: String): String {
-    val pureId = networkId.removePrefix("QtET-OneClick-")
-    val encId = base32Encode(pureId.toByteArray())
-    val encPwd = base32Encode(password.toByteArray())
-    // 格式: XXXX-XXXX-XXXX-XXXXX-XXXXX-XXX (12+13=25 chars)
-    return listOf(
-        encId.substring(0,4), encId.substring(4,8), encId.substring(8,12),
-        encPwd.substring(0,5), encPwd.substring(5,10), encPwd.substring(10,13)
-    ).joinToString("-")
-}
-
-private fun decodeConnectionCode(code: String): Pair<String, String> {
-    val clean = code.uppercase().replace(Regex("[^A-Z2-9]"), "")
-    if (clean.length != 25) return Pair("", "")
-    val encId = clean.substring(0, 12)
-    val encPwd = clean.substring(12, 25)
-    val idData = base32Decode(encId)
-    val pwdData = base32Decode(encPwd)
-    if (idData.size != 7 || pwdData.size != 8) return Pair("", "")
-    if (idData[0] != 'Q'.code.toByte() || idData[1] != 'E'.code.toByte()) return Pair("", "")
-    return Pair("QtET-OneClick-" + idData.decodeToString(), pwdData.decodeToString())
-}
-
-private fun randomSuffix(length: Int): String {
-    val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-    return (1..length).map { chars[Random.nextInt(chars.length)] }.joinToString("")
-}

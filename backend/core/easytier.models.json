@@ -1,0 +1,409 @@
+{
+  "name": "easytier-backend-models",
+  "version": "0.1.0",
+  "models": {
+    "EmptyObject": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "PingResult": {
+      "type": "object",
+      "required": ["ok", "backend_version"],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "backend_version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkConfig": {
+      "type": "object",
+      "required": ["instance_name", "network_name", "network_secret", "servers"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "network_name": {
+          "type": "string"
+        },
+        "network_secret": {
+          "type": "string"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "listen_port": {
+          "type": "integer"
+        },
+        "dhcp": {
+          "type": "boolean"
+        },
+        "ipv4": {
+          "type": "string"
+        },
+        "latency_first": {
+          "type": "boolean"
+        },
+        "private_mode": {
+          "type": "boolean"
+        },
+        "no_tun": {
+          "type": "boolean"
+        },
+        "enable_kcp_proxy": {
+          "type": "boolean"
+        },
+        "enable_quic_proxy": {
+          "type": "boolean"
+        },
+        "use_smoltcp": {
+          "type": "boolean"
+        },
+        "bind_device": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ValidationResult": {
+      "type": "object",
+      "required": ["valid", "errors"],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkStartResult": {
+      "type": "object",
+      "required": ["success", "instance_name"],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "instance_name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StopRequest": {
+      "type": "object",
+      "required": ["instance_name"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StopResult": {
+      "type": "object",
+      "required": ["success", "instance_name"],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "instance_name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkSummary": {
+      "type": "object",
+      "required": ["instance_name", "running"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "network_name": {
+          "type": "string"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "virtual_ipv4": {
+          "type": "string"
+        },
+        "peer_count": {
+          "type": "integer"
+        },
+        "route_count": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkListResult": {
+      "type": "object",
+      "required": ["instances"],
+      "properties": {
+        "instances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/NetworkSummary"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StateRequest": {
+      "type": "object",
+      "required": ["instance_name"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkStateResult": {
+      "type": "object",
+      "required": ["instance_name", "running", "nodes", "routes"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/NodeInfo"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/RouteInfo"
+          }
+        },
+        "log_tail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/LogEntry"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeInfo": {
+      "type": "object",
+      "required": ["key", "value"],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteInfo": {
+      "type": "object",
+      "required": ["destination", "via"],
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "via": {
+          "type": "string"
+        },
+        "proxy_cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LogEntry": {
+      "type": "object",
+      "required": ["timestamp", "message"],
+      "properties": {
+        "timestamp": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VpnAttachRequest": {
+      "type": "object",
+      "required": ["instance_name", "tun_fd"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "tun_fd": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VpnAttachResult": {
+      "type": "object",
+      "required": ["success", "instance_name"],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "instance_name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VpnDetachRequest": {
+      "type": "object",
+      "required": ["instance_name"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VpnDetachResult": {
+      "type": "object",
+      "required": ["success", "instance_name"],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "instance_name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LogSubscribeRequest": {
+      "type": "object",
+      "required": ["instance_name"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "tail": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubscribeResult": {
+      "type": "object",
+      "required": ["subscribed"],
+      "properties": {
+        "subscribed": {
+          "type": "boolean"
+        },
+        "channel": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstanceChangedEvent": {
+      "type": "object",
+      "required": ["instance_name", "action"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/models/NetworkSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeChangedEvent": {
+      "type": "object",
+      "required": ["instance_name", "nodes"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/NodeInfo"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteChangedEvent": {
+      "type": "object",
+      "required": ["instance_name", "routes"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/models/RouteInfo"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LogEvent": {
+      "type": "object",
+      "required": ["instance_name", "entry"],
+      "properties": {
+        "instance_name": {
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/models/LogEntry"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

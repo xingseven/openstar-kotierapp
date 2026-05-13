@@ -1,5 +1,8 @@
 package com.easytier.data
 
+import org.json.JSONArray
+import org.json.JSONObject
+
 import kotlin.random.Random
 
 data class NetworkConfig(
@@ -14,7 +17,7 @@ data class NetworkConfig(
     var ipv4: String = "",
     var latencyFirst: Boolean = false,
     var privateMode: Boolean = true,
-    var servers: MutableList<String> = mutableListOf("wss://qtet-public.070219.xyz"),
+    var servers: MutableList<String> = defaultServers().toMutableList(),
 
     var enableKcpProxy: Boolean = true,
     var disableKcpInput: Boolean = false,
@@ -203,11 +206,127 @@ data class NetworkConfig(
 
     companion object {
         private const val PREFIX = "EasyTierET-"
+        private const val LEGACY_PUBLIC_SERVER = "wss://qtet-public.070219.xyz"
+        private val DEFAULT_SERVERS = listOf(
+            "tcp://225284.xyz:11010",
+            "tcp://183.230.36.171:11010"
+        )
+
+        fun defaultServers(): List<String> = DEFAULT_SERVERS
+
+        fun fromJson(obj: JSONObject): NetworkConfig {
+            return NetworkConfig(
+                instanceName = obj.optString("instance_name", generateInstanceName()),
+                networkLabel = obj.optString("network_label", ""),
+                isRunning = false,
+                hostname = obj.optString("hostname", ""),
+                networkName = obj.optString("network_name", ""),
+                networkSecret = obj.optString("network_secret", ""),
+                dhcp = obj.optBoolean("dhcp", true),
+                ipv4 = obj.optString("ipv4", ""),
+                latencyFirst = obj.optBoolean("latency_first", false),
+                privateMode = obj.optBoolean("private_mode", true),
+                servers = normalizeServers(jsonArrayToStringList(obj.optJSONArray("servers"), defaultServers())),
+                enableKcpProxy = obj.optBoolean("enable_kcp_proxy", true),
+                disableKcpInput = obj.optBoolean("disable_kcp_input", false),
+                noTun = obj.optBoolean("no_tun", false),
+                enableQuicProxy = obj.optBoolean("enable_quic_proxy", false),
+                disableQuicInput = obj.optBoolean("disable_quic_input", false),
+                disableRelayKcp = obj.optBoolean("disable_relay_kcp", false),
+                disableRelayQuic = obj.optBoolean("disable_relay_quic", false),
+                enableRelayForeignNetworkKcp = obj.optBoolean("enable_relay_foreign_network_kcp", false),
+                enableRelayForeignNetworkQuic = obj.optBoolean("enable_relay_foreign_network_quic", false),
+                disableUdpHolePunching = obj.optBoolean("disable_udp_hole_punching", false),
+                disableTcpHolePunching = obj.optBoolean("disable_tcp_hole_punching", false),
+                disableUpnp = obj.optBoolean("disable_upnp", false),
+                needP2p = obj.optBoolean("need_p2p", false),
+                lazyP2p = obj.optBoolean("lazy_p2p", false),
+                p2pOnly = obj.optBoolean("p2p_only", false),
+                multiThread = obj.optBoolean("multi_thread", true),
+                useSmoltcp = obj.optBoolean("use_smoltcp", false),
+                devName = obj.optString("dev_name", ""),
+                mtu = obj.optInt("mtu", 0).takeIf { it in 1..1380 } ?: 0,
+                bindDevice = obj.optBoolean("bind_device", true),
+                disableP2p = obj.optBoolean("disable_p2p", false),
+                enableExitNode = obj.optBoolean("enable_exit_node", false),
+                systemForwarding = obj.optBoolean("system_forwarding", false),
+                disableSymHolePunching = obj.optBoolean("disable_sym_hole_punching", false),
+                disableIpv6 = obj.optBoolean("disable_ipv6", false),
+                relayAllPeerRpc = obj.optBoolean("relay_all_peer_rpc", false),
+                enableEncryption = obj.optBoolean("enable_encryption", true),
+                acceptDns = obj.optBoolean("accept_dns", false),
+                enableUdpBroadcastRelay = obj.optBoolean("enable_udp_broadcast_relay", true),
+                defaultProtocol = obj.optString("default_protocol", "").lowercase(),
+                encryptionAlgorithm = obj.optString("encryption_algorithm", "aes-gcm").ifEmpty { "aes-gcm" }.lowercase(),
+                foreignNetworkWhitelistEnabled = obj.optBoolean("foreign_network_whitelist_enabled", false),
+                foreignNetworkWhitelist = jsonArrayToStringList(obj.optJSONArray("foreign_network_whitelist")),
+                listenAddresses = jsonArrayToStringList(
+                    obj.optJSONArray("listen_addresses"),
+                    listOf("tcp://0.0.0.0:11010", "udp://0.0.0.0:11010")
+                ),
+                proxyNetworks = jsonArrayToStringList(obj.optJSONArray("proxy_networks")),
+                customRoutes = jsonArrayToStringList(obj.optJSONArray("custom_routes")),
+                exitNodes = jsonArrayToStringList(obj.optJSONArray("exit_nodes")),
+            )
+        }
+
+        fun normalizeServers(servers: List<String>): MutableList<String> {
+            val normalized = servers.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+            if (normalized.isEmpty()) {
+                return DEFAULT_SERVERS.toMutableList()
+            }
+
+            if (normalized.size == 1 && normalized[0] == LEGACY_PUBLIC_SERVER) {
+                return DEFAULT_SERVERS.toMutableList()
+            }
+
+            return normalized.toMutableList()
+        }
 
         fun generateInstanceName(): String {
             val suffix = (1..10).map { "0123456789abcdefghijklmnopqrstuvwxyz"[Random.nextInt(36)] }
                 .joinToString("")
             return "$PREFIX$suffix"
+        }
+
+        fun createOneClickHostConfig(networkName: String, networkSecret: String): NetworkConfig {
+            return NetworkConfig(
+                hostname = "Host-${generateRandomSuffix(4)}",
+                networkName = networkName,
+                networkSecret = networkSecret,
+                dhcp = false,
+                privateMode = true,
+                ipv4 = "11.45.14.1"
+            )
+        }
+
+        fun createOneClickGuestConfig(networkName: String, networkSecret: String): NetworkConfig {
+            return NetworkConfig(
+                hostname = "Guest-${generateRandomSuffix(4)}",
+                networkName = networkName,
+                networkSecret = networkSecret,
+                dhcp = true,
+                privateMode = true,
+                servers = defaultServers().toMutableList()
+            )
+        }
+
+        private fun generateRandomSuffix(length: Int): String {
+            val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+            return (1..length).map { chars[Random.nextInt(chars.length)] }.joinToString("")
+        }
+
+        private fun jsonArrayToStringList(array: JSONArray?, default: List<String> = emptyList()): MutableList<String> {
+            if (array == null) return default.toMutableList()
+
+            val values = mutableListOf<String>()
+            for (index in 0 until array.length()) {
+                val value = array.optString(index, "").trim()
+                if (value.isNotEmpty()) values.add(value)
+            }
+
+            return if (values.isEmpty()) default.toMutableList() else values
         }
     }
 }

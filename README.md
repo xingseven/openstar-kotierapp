@@ -13,6 +13,12 @@
 - **网络**: OkHttp
 - **VPN**: Android VpnService (TUN)
 
+## 架构方向
+
+- 当前 Android 端仍以 JNI 直连原生引擎为主。
+- 新增 `backend/` 目录，作为统一协议与适配层的落点，目标是把前端与后端调用边界稳定下来。
+- 后续不同前端尽量只调用同一套协议，不再直接依赖各自的 JNI/FFI 细节。
+
 ## 功能
 
 - 去中心化组网，无需公网 IP
@@ -26,15 +32,22 @@
 ## 项目结构
 
 ```
-android_app/
+backend/
+├── adapters/       # Android / Qt 的平台适配层说明
+└── protocol/       # 统一后端调用协议
+
+android/
 ├── app/src/main/java/com/easytier/
-│   ├── data/           # 数据模型 (NetworkConfig, NodeInfo, etc.)
-│   ├── jni/            # JNI 桥接层 (EasyTierJNI)
-│   ├── service/        # 核心服务 (EasyTierService, VpnService, etc.)
+│   ├── data/       # 数据模型 (NetworkConfig, NodeInfo, etc.)
+│   ├── jni/        # JNI 桥接层 (EasyTierJNI)
+│   ├── service/    # 核心服务 (EasyTierService, VpnService, etc.)
 │   └── ui/
 │       ├── components/ # 可复用组件
 │       ├── pages/      # 页面 (网络、一键联机、服务器、设置)
 │       └── theme/      # Material3 主题
+
+android_app/
+└── 旧目录与迁移残留
 ```
 
 ## 构建

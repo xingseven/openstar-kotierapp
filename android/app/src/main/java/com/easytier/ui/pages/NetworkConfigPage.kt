@@ -30,11 +30,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easytier.backend.csvToMutableStringList
+import com.easytier.backend.collectProxyCidrsFromJson
+import com.easytier.backend.collectRunningInstanceNames
 import com.easytier.data.NetworkConfig
 import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.CompactTopBar
 import com.easytier.data.NodeInfo
-import com.easytier.jni.EasyTierJNI
 import com.easytier.service.EasyTierService
 import com.easytier.service.LogService
 import com.easytier.service.SettingsRepository
@@ -44,8 +46,6 @@ import com.easytier.ui.components.CustomSwitch
 import com.easytier.ui.components.NodeInfoCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +57,7 @@ fun NetworkConfigPage() {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
 
-    var configs by remember { mutableStateOf(loadSavedConfigs(repo)) }
+    var configs by remember { mutableStateOf(repo.loadNetworkConfigs()) }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
@@ -72,9 +72,7 @@ fun NetworkConfigPage() {
 
     // 配置持久化
     fun saveConfigs() {
-        val arr = JSONArray()
-        configs.forEach { arr.put(JSONObject(it.toJson())) }
-        repo.saveNetworkConfigs(arr)
+        repo.saveNetworkConfigs(configs)
     }
 
     // VPN 授权相关
@@ -190,11 +188,11 @@ fun NetworkConfigPage() {
 
     // 页面重建时检测是否有正在运行的实例
     LaunchedEffect(Unit) {
-        val jsonStr = EasyTierJNI.collectNetworkInfos(16)
-        val map = try { if (jsonStr != null) JSONObject(jsonStr).optJSONObject("map") else null } catch (_: Exception) { null }
-        
+        val jsonStr = EasyTierService.collectNetworkInfoJson()
+        val runningNames = jsonStr?.let { collectRunningInstanceNames(it) }.orEmpty()
+
         configs.forEach { cfg ->
-            cfg.isRunning = map?.has(cfg.instanceName) == true
+            cfg.isRunning = runningNames.contains(cfg.instanceName)
         }
         if (selectedIndex in configs.indices) {
             isRunning = configs[selectedIndex].isRunning
@@ -532,26 +530,10 @@ fun NetworkConfigPage() {
                                         val localNode = nodes.find { it.isLocal }
                                         if (localNode != null && localNode.virtualIp.isNotEmpty()) {
                                             assignedIp = localNode.virtualIp
-                                            // 从 EasyTier 获取代理 CIDR 路由
-                                            val jsonStr = EasyTierJNI.collectNetworkInfos(16)
+                                            // 从 backend 获取代理 CIDR 路由
+                                            val jsonStr = EasyTierService.collectNetworkInfoJson()
                                             if (jsonStr != null) {
-                                                try {
-                                                    val map = JSONObject(jsonStr).optJSONObject("map") ?: continue
-                                                    val inst = map.optJSONObject(cfg.instanceName) ?: continue
-                                                    val routesArr = inst.optJSONArray("routes")
-                                                    if (routesArr != null) {
-                                                        for (j in 0 until routesArr.length()) {
-                                                            val r = routesArr.optJSONObject(j) ?: continue
-                                                            val cidrs = r.optJSONArray("proxy_cidrs")
-                                                            if (cidrs != null) {
-                                                                for (k in 0 until cidrs.length()) {
-                                                                    val c = cidrs.optString(k, "")
-                                                                    if (c.isNotEmpty()) routes.add(c)
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                } catch (_: Exception) {}
+                                                routes = collectProxyCidrsFromJson(jsonStr, cfg.instanceName).toMutableList()
                                             }
                                             break
                                         }
@@ -745,77 +727,3 @@ private fun DirectConnectCard(
     }
 }
 
-private fun csvToMutableStringList(text: String): MutableList<String> {
-    return text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-}
-
-private fun jsonArrayToMutableStringList(array: JSONArray?, default: List<String> = emptyList()): MutableList<String> {
-    if (array == null) return default.toMutableList()
-
-    val values = mutableListOf<String>()
-    for (index in 0 until array.length()) {
-        val value = array.optString(index, "").trim()
-        if (value.isNotEmpty()) values.add(value)
-    }
-
-    return if (values.isEmpty()) default.toMutableList() else values
-}
-
-private fun loadSavedConfigs(repo: SettingsRepository): MutableList<NetworkConfig> {
-    val json = repo.loadNetworkConfigsJson() ?: return mutableListOf(NetworkConfig())
-    val list = mutableListOf<NetworkConfig>()
-    for (i in 0 until json.length()) {
-        val obj = json.optJSONObject(i) ?: continue
-        list.add(NetworkConfig(
-            instanceName = obj.optString("instance_name", NetworkConfig.generateInstanceName()),
-            networkLabel = obj.optString("network_label", ""),
-            isRunning = false, // 强制重置状态，启动时由 LaunchedEffect 从底层接口动态检测
-            hostname = obj.optString("hostname", ""),
-            networkName = obj.optString("network_name", ""),
-            networkSecret = obj.optString("network_secret", ""),
-            dhcp = obj.optBoolean("dhcp", true),
-            ipv4 = obj.optString("ipv4", ""),
-            latencyFirst = obj.optBoolean("latency_first", false),
-            privateMode = obj.optBoolean("private_mode", true),
-            servers = jsonArrayToMutableStringList(obj.optJSONArray("servers"), listOf("wss://qtet-public.070219.xyz")),
-            enableKcpProxy = obj.optBoolean("enable_kcp_proxy", true),
-            disableKcpInput = obj.optBoolean("disable_kcp_input", false),
-            noTun = obj.optBoolean("no_tun", false),
-            enableQuicProxy = obj.optBoolean("enable_quic_proxy", false),
-            disableQuicInput = obj.optBoolean("disable_quic_input", false),
-            disableRelayKcp = obj.optBoolean("disable_relay_kcp", false),
-            disableRelayQuic = obj.optBoolean("disable_relay_quic", false),
-            enableRelayForeignNetworkKcp = obj.optBoolean("enable_relay_foreign_network_kcp", false),
-            enableRelayForeignNetworkQuic = obj.optBoolean("enable_relay_foreign_network_quic", false),
-            disableUdpHolePunching = obj.optBoolean("disable_udp_hole_punching", false),
-            disableTcpHolePunching = obj.optBoolean("disable_tcp_hole_punching", false),
-            disableUpnp = obj.optBoolean("disable_upnp", false),
-            needP2p = obj.optBoolean("need_p2p", false),
-            lazyP2p = obj.optBoolean("lazy_p2p", false),
-            p2pOnly = obj.optBoolean("p2p_only", false),
-            multiThread = obj.optBoolean("multi_thread", true),
-            useSmoltcp = obj.optBoolean("use_smoltcp", false),
-            devName = obj.optString("dev_name", ""),
-            mtu = obj.optInt("mtu", 0).takeIf { it in 1..1380 } ?: 0,
-            bindDevice = obj.optBoolean("bind_device", true),
-            disableP2p = obj.optBoolean("disable_p2p", false),
-            enableExitNode = obj.optBoolean("enable_exit_node", false),
-            systemForwarding = obj.optBoolean("system_forwarding", false),
-            disableSymHolePunching = obj.optBoolean("disable_sym_hole_punching", false),
-            disableIpv6 = obj.optBoolean("disable_ipv6", false),
-            relayAllPeerRpc = obj.optBoolean("relay_all_peer_rpc", false),
-            enableEncryption = obj.optBoolean("enable_encryption", true),
-            acceptDns = obj.optBoolean("accept_dns", false),
-            enableUdpBroadcastRelay = obj.optBoolean("enable_udp_broadcast_relay", true),
-            defaultProtocol = obj.optString("default_protocol", "").lowercase(),
-            encryptionAlgorithm = obj.optString("encryption_algorithm", "aes-gcm").ifEmpty { "aes-gcm" }.lowercase(),
-            foreignNetworkWhitelistEnabled = obj.optBoolean("foreign_network_whitelist_enabled", false),
-            foreignNetworkWhitelist = jsonArrayToMutableStringList(obj.optJSONArray("foreign_network_whitelist")),
-            listenAddresses = jsonArrayToMutableStringList(obj.optJSONArray("listen_addresses"), listOf("tcp://0.0.0.0:11010", "udp://0.0.0.0:11010")),
-            proxyNetworks = jsonArrayToMutableStringList(obj.optJSONArray("proxy_networks")),
-            customRoutes = jsonArrayToMutableStringList(obj.optJSONArray("custom_routes")),
-            exitNodes = jsonArrayToMutableStringList(obj.optJSONArray("exit_nodes")),
-        ))
-    }
-    return if (list.isEmpty()) mutableListOf(NetworkConfig()) else list
-}

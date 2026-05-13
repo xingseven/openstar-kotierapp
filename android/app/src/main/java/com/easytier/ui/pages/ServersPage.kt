@@ -34,7 +34,7 @@ fun ServersPage() {
     val repo = LocalSettingsRepository.current
     val scope = rememberCoroutineScope()
 
-    var servers by remember { mutableStateOf(loadServers(repo)) }
+    var servers by remember { mutableStateOf(repo.loadFavoriteServers()) }
     var publicNodes by remember { mutableStateOf<List<PublicNode>>(emptyList()) }
     var publicExpanded by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(true) }
@@ -72,7 +72,7 @@ fun ServersPage() {
                         name = name.ifBlank { url.trim() },
                         url = url.trim()
                     )).toMutableList()
-                    saveServers(repo, servers)
+                    repo.saveFavoriteServers(servers)
                     showAddDialog = false
                 }
             }
@@ -109,7 +109,7 @@ fun ServersPage() {
             icon = AppIcons.Edit,
             onConfirm = {
                 servers = servers.toMutableList().also { it[editingIndex] = entry.apply { name = editName.trim(); url = editUrl.trim() } }
-                saveServers(repo, servers)
+                repo.saveFavoriteServers(servers)
                 editingIndex = -1
             }
         ) {
@@ -210,23 +210,9 @@ fun ServersPage() {
                                     name = node.description.ifBlank { node.serverUrl },
                                     url = node.serverUrl
                                 )).toMutableList()
-                                saveServers(repo, servers)
+                                repo.saveFavoriteServers(servers)
                             }
-                            // 同时添加到网络配置的服务器列表
-                            val configsJson = repo.loadNetworkConfigsJson()
-                            if (configsJson != null && configsJson.length() > 0) {
-                                val first = configsJson.getJSONObject(0)
-                                val arr = first.optJSONArray("servers") ?: JSONArray()
-                                var found = false
-                                for (i in 0 until arr.length()) {
-                                    if (arr.optString(i, "") == node.serverUrl) { found = true; break }
-                                }
-                                if (!found) {
-                                    arr.put(node.serverUrl)
-                                    first.put("servers", arr)
-                                    repo.saveNetworkConfigs(configsJson)
-                                }
-                            }
+                            repo.addServerToFirstNetworkConfig(node.serverUrl)
                         })
                     }
                 }
@@ -274,7 +260,7 @@ fun ServersPage() {
                             onDelete = {
                                 if (!entry.isDefault) {
                                     servers = servers.toMutableList().also { it.removeAt(index) }
-                                    saveServers(repo, servers)
+                                    repo.saveFavoriteServers(servers)
                                 }
                             }
                         )
@@ -443,22 +429,3 @@ private fun ServerCard(
     }
 }
 
-private fun loadServers(repo: SettingsRepository): MutableList<ServerEntry> {
-    val json = repo.loadFavoriteServersJson() ?: return mutableListOf(
-        ServerEntry(name = "官方公共服务器", url = "wss://qtet-public.070219.xyz", isDefault = true)
-    )
-    val list = mutableListOf<ServerEntry>()
-    for (i in 0 until json.length()) {
-        list.add(ServerEntry.fromJson(json.getJSONObject(i)))
-    }
-    if (list.isEmpty()) {
-        list.add(ServerEntry(name = "官方公共服务器", url = "wss://qtet-public.070219.xyz", isDefault = true))
-    }
-    return list
-}
-
-private fun saveServers(repo: SettingsRepository, servers: List<ServerEntry>) {
-    val arr = JSONArray()
-    servers.forEach { arr.put(it.toJson()) }
-    repo.saveFavoriteServers(arr)
-}
