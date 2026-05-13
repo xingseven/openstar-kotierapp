@@ -4,7 +4,7 @@ plugins {
 }
 
 val appVersionCode = 4051
-val appVersionName = "4.2.31"
+val appVersionName = "4.2.32"
 
 base {
     archivesName.set("kotier-v${appVersionName}-${appVersionCode}")

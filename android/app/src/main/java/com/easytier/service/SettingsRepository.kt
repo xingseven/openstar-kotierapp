@@ -87,26 +87,6 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean("dark_mode", false)
         set(v) = prefs.edit().putBoolean("dark_mode", v).apply()
 
-    var startOnBoot: Boolean
-        get() = prefs.getBoolean("start_on_boot", false)
-        set(v) = prefs.edit().putBoolean("start_on_boot", v).apply()
-
-    // ── 网络设置 ──
-
-    var autoReconnect: Boolean
-        get() = prefs.getBoolean("auto_reconnect", false)
-        set(v) = prefs.edit().putBoolean("auto_reconnect", v).apply()
-
-    // ── 通知设置 ──
-
-    var notifyOnConnect: Boolean
-        get() = prefs.getBoolean("notify_on_connect", true)
-        set(v) = prefs.edit().putBoolean("notify_on_connect", v).apply()
-
-    var notifyOnDisconnect: Boolean
-        get() = prefs.getBoolean("notify_on_disconnect", true)
-        set(v) = prefs.edit().putBoolean("notify_on_disconnect", v).apply()
-
     // ── 日志设置 ──
 
     var logLevel: String

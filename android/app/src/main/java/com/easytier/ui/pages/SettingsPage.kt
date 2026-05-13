@@ -26,10 +26,6 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     val repo = LocalSettingsRepository.current
     var followSystem by remember { mutableStateOf(repo.followSystemTheme) }
     var darkMode by remember { mutableStateOf(repo.darkMode) }
-    var startOnBoot by remember { mutableStateOf(repo.startOnBoot) }
-    var autoReconnect by remember { mutableStateOf(repo.autoReconnect) }
-    var notifyOnConnect by remember { mutableStateOf(repo.notifyOnConnect) }
-    var notifyOnDisconnect by remember { mutableStateOf(repo.notifyOnDisconnect) }
     var logLevel by remember { mutableStateOf(repo.logLevel) }
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -41,9 +37,7 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
             destructive = true,
             onConfirm = {
                 repo.clearAll()
-                followSystem = true; darkMode = false; startOnBoot = false
-                autoReconnect = false; notifyOnConnect = true
-                notifyOnDisconnect = true; logLevel = "info"
+                followSystem = true; darkMode = false; logLevel = "info"
                 showClearDialog = false
             }
         ) {
@@ -78,28 +72,6 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                     SettingSwitch(label = "深色模式", value = darkMode) { v ->
                         darkMode = v; repo.darkMode = v
                     }
-                }
-                HorizontalDivider()
-                SettingSwitch(label = "开机自启", hint = "系统启动时自动运行", value = startOnBoot) { v ->
-                    startOnBoot = v; repo.startOnBoot = v
-                }
-            }
-
-            SectionHeader("网络")
-            SettingsCard {
-                SettingSwitch(label = "自动回连", hint = "网络断开后自动重新连接", value = autoReconnect) { v ->
-                    autoReconnect = v; repo.autoReconnect = v
-                }
-            }
-
-            SectionHeader("通知")
-            SettingsCard {
-                SettingSwitch(label = "连接成功通知", value = notifyOnConnect) { v ->
-                    notifyOnConnect = v; repo.notifyOnConnect = v
-                }
-                HorizontalDivider()
-                SettingSwitch(label = "断开连接通知", value = notifyOnDisconnect) { v ->
-                    notifyOnDisconnect = v; repo.notifyOnDisconnect = v
                 }
             }
 
