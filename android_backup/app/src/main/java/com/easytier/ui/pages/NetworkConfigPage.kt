@@ -241,12 +241,9 @@ fun NetworkConfigPage() {
     LaunchedEffect(runtimeState, selectedIndex, configs.size) {
         var changed = false
         configs.forEach { cfg ->
-            val connected = runtimeState.isConnected(
-                instanceName = cfg.instanceName,
-                requireVpn = !cfg.noTun
-            )
-            if (cfg.isRunning != connected) {
-                cfg.isRunning = connected
+            val daemonRunning = runtimeState.runningInstances.contains(cfg.instanceName)
+            if (cfg.isRunning != daemonRunning) {
+                cfg.isRunning = daemonRunning
                 changed = true
             }
         }
@@ -364,11 +361,7 @@ fun NetworkConfigPage() {
                         OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it; saveCurrentConfig() }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
 
-                        val dhcpOn = configs.getOrNull(selectedIndex)?.dhcp ?: true
-                        CustomSwitch(label = "DHCP 自动分配 IP", value = dhcpOn) { v ->
-                            updateSelectedConfig { it.dhcp = v }
-                        }
-                        if (!dhcpOn) {
+                        if (configs.getOrNull(selectedIndex)?.dhcp != true) {
                             Spacer(Modifier.height(5.dp))
                             OutlinedTextField(value = ipv4Text, onValueChange = { ipv4Text = it }, label = { Text("静态 IPv4") }, placeholder = { Text("例如: 10.144.144.10") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
@@ -495,11 +488,13 @@ fun NetworkConfigPage() {
                 Button(
                     onClick = {
                         if (selectedIndex !in configs.indices) return@Button
-                        saveCurrentConfig()
                         val cfg = configs[selectedIndex]
                         scope.launch {
+                            isLoading = true
+                            saveCurrentConfig()
                             if (!isRunning) {
                                 if (cfg.networkName.isBlank()) {
+                                    isLoading = false
                                     showToast("请先填写网络名称")
                                     return@launch
                                 }
@@ -512,12 +507,11 @@ fun NetworkConfigPage() {
                                 }
 
                                 if (!cfg.noTun && EasyTierService.isVpnInUseByOther(cfg.instanceName)) {
+                                    isLoading = false
                                     showVpnConflictDialog = true
                                     return@launch
                                 }
                             }
-
-                            isLoading = true
                             if (isRunning) {
                                 val result = EasyTierService.stopNetwork(cfg.instanceName)
                                 if (runtimeState.activeVpnInstanceName == cfg.instanceName) {

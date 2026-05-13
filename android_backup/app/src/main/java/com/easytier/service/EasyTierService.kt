@@ -78,7 +78,7 @@ object EasyTierService {
                 Log.i(TAG, "Backend initialized")
                 scope.launch {
                     // 清理上次运行残留的网络实例
-                    backend.stopAllNetworks()
+                    stopAllNetworks()
                     refreshRuntimeState()
                 }
             } else {
@@ -125,10 +125,16 @@ object EasyTierService {
         if (!initialized) return EasyTierResult.fail("not initialized")
 
         return try {
+            val shouldStopVpn = _runtimeState.value.activeVpnInstanceName == instanceName
             val result = backend.stopNetwork(instanceName)
             if (result.success) {
-                if (_runtimeState.value.activeVpnInstanceName == instanceName) {
-                    notifyVpnStopped(instanceName)
+                if (shouldStopVpn) {
+                    val context = appContext
+                    if (context != null) {
+                        stopVpnServiceInternal(context, instanceName, force = true)
+                    } else {
+                        Log.w(TAG, "unable to stop VPN service for $instanceName: app context unavailable")
+                    }
                 }
                 refreshRuntimeState()
                 LogService.info("网络实例已停止: $instanceName", source = TAG)
@@ -150,6 +156,12 @@ object EasyTierService {
         return try {
             val stopped = backend.stopAllNetworks().success
             if (stopped) {
+                val context = appContext
+                if (context != null) {
+                    stopVpnServiceInternal(context, force = true)
+                } else {
+                    Log.w(TAG, "unable to stop VPN service while stopping all networks: app context unavailable")
+                }
                 _runtimeState.value = RuntimeState()
             }
             stopped
@@ -286,15 +298,23 @@ object EasyTierService {
     }
 
     fun stopVpnService(activity: Activity, instanceName: String? = null) {
+        stopVpnServiceInternal(activity, instanceName)
+    }
+
+    private fun stopVpnServiceInternal(context: Context, instanceName: String? = null, force: Boolean = false) {
         if (instanceName != null && _runtimeState.value.activeVpnInstanceName != instanceName) {
-            Log.d(TAG, "skip stopVpnService: $instanceName is not the active VPN instance")
-            return
+            if (force) {
+                Log.d(TAG, "force stopVpnService for stale runtime state: $instanceName")
+            } else {
+                Log.d(TAG, "skip stopVpnService: $instanceName is not the active VPN instance")
+                return
+            }
         }
         val existing = adapter
         if (existing != null) {
             existing.stopVpnService()
         } else {
-            activity.stopService(Intent(activity, EasyTierVpnService::class.java))
+            context.stopService(Intent(context, EasyTierVpnService::class.java))
         }
     }
 

@@ -13,11 +13,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * 紧凑顶部导航栏：不额外吞状态栏高度，标题保持几何居中。
+ * 紧凑顶部导航栏：不额外吞状态栏高度，标题保持居中。
  */
 @Composable
 fun CompactTopBar(
@@ -30,33 +30,24 @@ fun CompactTopBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
-                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (navigationIcon != null) {
-                Box(
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    navigationIcon()
-                }
+                Box { navigationIcon() }
             }
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 56.dp),
-                textAlign = TextAlign.Center,
-                maxLines = 1
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Row(
-                modifier = Modifier.align(Alignment.CenterEnd),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, content = actions)
         }
     }
 }

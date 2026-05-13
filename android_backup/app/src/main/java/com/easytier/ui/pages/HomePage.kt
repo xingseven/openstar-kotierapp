@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.R
@@ -47,6 +48,7 @@ private val navItems = listOf(
 fun HomePage() {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
     var showLogPage by remember { mutableStateOf(false) }
+    BackHandler(enabled = showLogPage) { showLogPage = false }
     val stateHolder = rememberSaveableStateHolder()
 
     Scaffold(
@@ -55,17 +57,10 @@ fun HomePage() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(start = 10.dp, end = 10.dp, bottom = 4.dp),
+                    .background(MaterialTheme.colorScheme.surface)
+                    .navigationBarsPadding(),
                 contentAlignment = Alignment.Center
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp
-                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -76,8 +71,8 @@ fun HomePage() {
                     ) {
                         navItems.forEachIndexed { index, item ->
                             val selected = selectedIndex == index
-                            val contentColor = if (selected) {
-                                Color.White
+                            val navTint = if (selected) {
+                                MaterialTheme.colorScheme.primary
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             }
@@ -96,44 +91,18 @@ fun HomePage() {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(width = 46.dp, height = 24.dp)
-                                            .background(
-                                                brush = if (selected) {
-                                                    Brush.horizontalGradient(
-                                                        listOf(
-                                                            MaterialTheme.colorScheme.primary,
-                                                            MaterialTheme.colorScheme.secondary,
-                                                        )
-                                                    )
-                                                } else {
-                                                    Brush.horizontalGradient(
-                                                        listOf(
-                                                            Color.Transparent,
-                                                            Color.Transparent,
-                                                        )
-                                                    )
-                                                },
-                                                shape = RoundedCornerShape(16.dp)
-                                            )
-                                            ,
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(if (selected) item.selectedIconRes else item.iconRes),
-                                            contentDescription = item.label,
-                                            tint = contentColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        painter = painterResource(if (selected) item.selectedIconRes else item.iconRes),
+                                        contentDescription = item.label,
+                                        tint = navTint,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                     Spacer(Modifier.height(2.dp))
-                                    Text(item.label, fontSize = 11.sp, color = if (selected) MaterialTheme.colorScheme.primary else contentColor, lineHeight = 14.sp)
+                                    Text(item.label, fontSize = 11.sp, color = navTint, lineHeight = 14.sp)
                                 }
                             }
                         }
                     }
-                }
             }
         }
     ) { padding ->

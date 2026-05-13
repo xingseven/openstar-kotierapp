@@ -1,11 +1,15 @@
 ﻿package com.easytier.ui.pages
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
 import com.easytier.ui.components.CompactTopBar
@@ -20,6 +24,7 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogPage(onBack: (() -> Unit)? = null) {
+    val context = LocalContext.current
     var logs by remember { mutableStateOf(LogService.logs) }
     var autoScroll by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
@@ -47,6 +52,13 @@ fun LogPage(onBack: (() -> Unit)? = null) {
                     }
                 }
             ) {
+                    IconButton(onClick = {
+                        val text = LogService.logs.joinToString("\n") { it.toFormattedString() }
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("easytier_logs", text))
+                    }) {
+                        AppIcon(AppIcons.Copy, contentDescription = "复制日志")
+                    }
                     TextButton(onClick = { autoScroll = !autoScroll }) {
                         Text(if (autoScroll) "自动滚动: 开" else "自动滚动: 关")
                     }
