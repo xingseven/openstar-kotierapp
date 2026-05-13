@@ -55,7 +55,7 @@ object PublicNodeService {
                     nodes.add(PublicNode(
                         id = id,
                         name = rawName,
-                        serverUrl = resolveUrl(serverUrl),
+                        serverUrl = serverUrl,
                         description = desc,
                         type = type,
                         group = groupName
@@ -92,8 +92,6 @@ object PublicNodeService {
             LogService.warn("heartbeat fetch failed: $e", source = "PublicNode")
         }
     }
-
-    private fun resolveUrl(originalUrl: String): String = originalUrl.replace("*", "")
 
     private fun parseNodeName(name: String): Pair<String, String> {
         val trimmed = name.trim()

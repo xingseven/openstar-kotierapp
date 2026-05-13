@@ -349,11 +349,13 @@ private fun PublicNodeCard(node: PublicNode, onUse: () -> Unit) {
 
             Spacer(Modifier.width(4.dp))
 
+            val hasAsterisk = node.serverUrl.contains("*")
             OutlinedButton(
-                onClick = onUse,
+                onClick = { if (!hasAsterisk) onUse() },
+                enabled = !hasAsterisk,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                Text("使用", fontSize = 12.sp)
+                Text(if (hasAsterisk) "不可用" else "使用", fontSize = 12.sp)
             }
         }
     }
