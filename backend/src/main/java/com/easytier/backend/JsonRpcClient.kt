@@ -170,21 +170,7 @@ class JsonRpcClient(private val backend: BackendClient) {
 
     private fun networkConfigFromParams(params: JSONObject): NetworkConfig? {
         return try {
-            val config = NetworkConfig()
-            params.optString("instance_name", "").ifNotEmpty { config.instanceName = it }
-            params.optString("network_name", "").ifNotEmpty { config.networkName = it }
-            params.optString("network_secret", "").ifNotEmpty { config.networkSecret = it }
-            params.optString("ipv4", "").ifNotEmpty { config.ipv4 = it }
-
-            val serversArr = params.optJSONArray("servers")
-            if (serversArr != null) {
-                config.servers = (0 until serversArr.length()).map { serversArr.getString(it) }.toMutableList()
-            }
-            if (params.has("dhcp")) config.dhcp = params.getBoolean("dhcp")
-            if (params.has("latency_first")) config.latencyFirst = params.getBoolean("latency_first")
-            if (params.has("no_tun")) config.noTun = params.getBoolean("no_tun")
-            if (params.has("use_smoltcp")) config.useSmoltcp = params.getBoolean("use_smoltcp")
-            config
+            NetworkConfig.fromJson(params)
         } catch (e: Exception) {
             Log.w(TAG, "failed to parse NetworkConfig from params", e)
             null
@@ -196,8 +182,4 @@ class JsonRpcClient(private val backend: BackendClient) {
     companion object {
         private const val TAG = "JsonRpcClient"
     }
-}
-
-private fun String.ifNotEmpty(action: (String) -> Unit) {
-    if (isNotEmpty()) action(this)
 }

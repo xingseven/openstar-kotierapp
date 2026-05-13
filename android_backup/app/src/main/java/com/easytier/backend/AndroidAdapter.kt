@@ -15,6 +15,7 @@ import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import com.easytier.service.EasyTierVpnService
 import kotlinx.coroutines.*
+import org.json.JSONObject
 
 class AndroidAdapter(
     private val jsonRpcClient: JsonRpcClient,
@@ -141,27 +142,8 @@ class AndroidAdapter(
     }
 
     private fun buildNetworkConfigParams(config: NetworkConfig): String {
-        val sb = StringBuilder()
-        sb.append("{")
-        sb.append("\"instance_name\":\"${escape(config.instanceName)}\",")
-        sb.append("\"network_name\":\"${escape(config.networkName)}\",")
-        sb.append("\"network_secret\":\"${escape(config.networkSecret)}\",")
-        sb.append("\"servers\":[${config.servers.joinToString(",") { "\"${escape(it)}\"" }}]")
-        sb.append(",\"dhcp\":${config.dhcp}")
-        sb.append(",\"latency_first\":${config.latencyFirst}")
-        sb.append(",\"no_tun\":${config.noTun}")
-        sb.append(",\"use_smoltcp\":${config.useSmoltcp}")
-        if (config.ipv4.isNotEmpty()) sb.append(",\"ipv4\":\"${escape(config.ipv4)}\"")
-        sb.append("}")
-        return sb.toString()
+        return JSONObject(config.toJson()).toString()
     }
-
-    private fun escape(s: String): String = s
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("\t", "\\t")
 
     companion object {
         private const val TAG = "AndroidAdapter"
