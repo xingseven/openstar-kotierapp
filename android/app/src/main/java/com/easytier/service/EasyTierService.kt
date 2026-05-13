@@ -37,6 +37,7 @@ object EasyTierService {
     private var appContext: Context? = null
     private var connectivityManager: ConnectivityManager? = null
     private var vpnNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    private var physicalNetworkCallback: ConnectivityManager.NetworkCallback? = null
     private val _runtimeState = MutableStateFlow(RuntimeState())
     val runtimeState: StateFlow<RuntimeState> = _runtimeState.asStateFlow()
 
@@ -250,8 +251,43 @@ object EasyTierService {
             callback
         )
 
+        val internetCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onLost(network: Network) {
+                scope.launch {
+                    delay(500)
+                    var hasPhysicalNetwork = false
+                    val allNetworks = manager.allNetworks
+                    for (n in allNetworks) {
+                        val caps = manager.getNetworkCapabilities(n)
+                        if (caps != null && 
+                            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && 
+                            !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                            hasPhysicalNetwork = true
+                            break
+                        }
+                    }
+
+                    if (!hasPhysicalNetwork) {
+                        val activeInstanceName = _runtimeState.value.activeVpnInstanceName ?: return@launch
+                        LogService.warn("物理网络已断开，自动关闭 VPN: $activeInstanceName", source = TAG)
+                        notifyVpnStopped(activeInstanceName)
+                        stopNetwork(activeInstanceName)
+                        refreshRuntimeState()
+                    }
+                }
+            }
+        }
+
+        manager.registerNetworkCallback(
+            NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(),
+            internetCallback
+        )
+
         connectivityManager = manager
         vpnNetworkCallback = callback
+        physicalNetworkCallback = internetCallback
     }
 
     suspend fun collectNodeInfos(instanceName: String): List<NodeInfo> {

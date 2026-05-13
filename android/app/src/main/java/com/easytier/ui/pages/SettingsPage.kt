@@ -1,6 +1,9 @@
-﻿package com.easytier.ui.pages
+package com.easytier.ui.pages
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.BuildConfig
+import com.easytier.service.Contributor
+import com.easytier.service.GitHubService
 import com.easytier.service.SettingsRepository
 import com.easytier.service.UpdateChecker
 import com.easytier.service.UpdateInfo
@@ -29,6 +34,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     val repo = LocalSettingsRepository.current
+    val themeListener = LocalThemeChangeListener.current
     var followSystem by remember { mutableStateOf(repo.followSystemTheme) }
     var darkMode by remember { mutableStateOf(repo.darkMode) }
     var logLevel by remember { mutableStateOf(repo.logLevel) }
@@ -41,6 +47,17 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     var isDownloading by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableIntStateOf(0) }
 
+    // 贡献者数据
+    var contributors by remember { mutableStateOf<List<Contributor>>(emptyList()) }
+    var isLoadingContributors by remember { mutableStateOf(false) }
+
+    // 加载贡献者数据
+    LaunchedEffect(Unit) {
+        isLoadingContributors = true
+        contributors = GitHubService.fetchContributors()
+        isLoadingContributors = false
+    }
+
     if (showClearDialog) {
         AppDialog(
             title = "清除所有数据",
@@ -50,6 +67,8 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
             onConfirm = {
                 repo.clearAll()
                 followSystem = true; darkMode = false; logLevel = "info"
+                // 通知主题变化
+                themeListener.onThemeChanged(true, false)
                 showClearDialog = false
             }
         ) {
@@ -108,11 +127,15 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 SettingSwitch(label = "跟随系统", value = followSystem) { v ->
                     followSystem = v; repo.followSystemTheme = v
                     if (v) { darkMode = false; repo.darkMode = false }
+                    // 通知主题变化
+                    themeListener.onThemeChanged(v, if (v) false else darkMode)
                 }
                 if (!followSystem) {
                     HorizontalDivider()
                     SettingSwitch(label = "深色模式", value = darkMode) { v ->
                         darkMode = v; repo.darkMode = v
+                        // 通知主题变化
+                        themeListener.onThemeChanged(followSystem, v)
                     }
                 }
             }
@@ -156,6 +179,42 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 InfoRow("后端", "EasyTier JNI")
                 HorizontalDivider()
                 ListItem(
+                    headlineContent = { Text("GitHub 项目", fontSize = 13.sp) },
+                    supportingContent = { Text("github.com/xingseven/openstar-kotierapp", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/xingseven/openstar-kotierapp"))
+                            context.startActivity(intent)
+                        }
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("服务基于 EasyTier", fontSize = 13.sp) },
+                    supportingContent = { Text("qtet.cn", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://qtet.cn"))
+                            context.startActivity(intent)
+                        }
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("项目网站", fontSize = 13.sp) },
+                    supportingContent = { Text("kotier.openstars.org", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kotier.openstars.org"))
+                            context.startActivity(intent)
+                        }
+                )
+                HorizontalDivider()
+                ListItem(
                     headlineContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (isCheckingUpdate) {
@@ -185,6 +244,45 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                             }
                         }
                 )
+            }
+
+            // 贡献者区域
+            SectionHeader("贡献者")
+            SettingsCard {
+                if (isLoadingContributors) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                } else if (contributors.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "暂无贡献者信息",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        contributors.forEach { contributor ->
+                            ContributorItem(contributor = contributor)
+                        }
+                    }
+                }
             }
 
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -244,6 +342,69 @@ private fun InfoRow(title: String, value: String) {
     )
 }
 
+@Composable
+private fun ContributorItem(contributor: Contributor) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(contributor.htmlUrl))
+                context.startActivity(intent)
+            }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 头像（使用首字母）
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(18.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = contributor.login.take(1).uppercase(),
+                fontSize = 16.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        // 用户名和贡献数
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                contributor.login,
+                fontSize = 14.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            )
+            Text(
+                "${contributor.contributions} 次贡献",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        // 箭头
+        AppIcon(
+            AppIcons.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 val LocalSettingsRepository = staticCompositionLocalOf<SettingsRepository> {
     error("SettingsRepository not provided")
+}
+
+// 主题变化监听器
+class ThemeChangeListener(
+    val onThemeChanged: (followSystem: Boolean, darkMode: Boolean) -> Unit
+)
+
+val LocalThemeChangeListener = staticCompositionLocalOf<ThemeChangeListener> {
+    error("ThemeChangeListener not provided")
 }
