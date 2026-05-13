@@ -3,8 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val appVersionCode = 4060
-val appVersionName = "4.2.42"
+val appVersionCode = 4061
+val appVersionName = "4.2.43"
 
 base {
     archivesName.set("kotier-v${appVersionName}-${appVersionCode}")
