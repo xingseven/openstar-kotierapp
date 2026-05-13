@@ -190,7 +190,7 @@ fun ServersPage() {
                             AppIcon(AppIcons.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("社区公共节点", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                Text("${publicNodes.size} 个", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${publicNodes.count { !it.serverUrl.contains("*") }} 个", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.width(4.dp))
                                 AppIcon(
                                     AppIcons.ExpandMore,
@@ -203,7 +203,8 @@ fun ServersPage() {
                 }
 
                 if (publicExpanded) {
-                    items(publicNodes, key = { it.id }) { node ->
+                    val visibleNodes = publicNodes.filter { !it.serverUrl.contains("*") }
+                    items(visibleNodes, key = { it.id }) { node ->
                         PublicNodeCard(node = node, onUse = {
                             val exists = servers.any { it.url == node.serverUrl }
                             if (!exists) {
