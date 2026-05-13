@@ -33,6 +33,9 @@ import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
 import com.easytier.service.EasyTierService
 import com.easytier.service.OneClickSessionSnapshot
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -40,6 +43,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun OneClickPage() {
     val context = LocalContext.current as Activity
+    val lifecycleOwner = context as LifecycleOwner
     val scope = rememberCoroutineScope()
     val repo = LocalSettingsRepository.current
     val runtimeState by EasyTierService.runtimeState.collectAsState()
@@ -60,6 +64,8 @@ fun OneClickPage() {
     val guestConfig = guestSession?.toNetworkConfig()
     val hostRunning = hostSession?.let { runtimeState.isConnected(it.instanceName) } == true
     val guestRunning = guestSession?.let { runtimeState.isConnected(it.instanceName) } == true
+    val currentOneClickInstances = setOfNotNull(hostSession?.instanceName, guestSession?.instanceName)
+    val otherRunningInstances = runtimeState.runningInstances - currentOneClickInstances
 
     val setLoading: (Boolean) -> Unit = { isLoading = it }
     val setStatus: (String, Boolean) -> Unit = { msg, err -> statusMessage = msg; statusIsError = err }
@@ -75,23 +81,31 @@ fun OneClickPage() {
     }
 
     suspend fun awaitVpnStartData(config: NetworkConfig): Pair<String, List<String>> {
-        var assignedIp = NetworkConfig.vpnIpv4Address(config.ipv4).ifEmpty { "10.144.144.1" }
+        var assignedIp = if (!config.dhcp && config.ipv4.isNotBlank()) {
+            NetworkConfig.vpnIpv4Address(config.ipv4)
+        } else {
+            ""
+        }
         var routes = emptyList<String>()
 
-        repeat(30) {
+        repeat(if (assignedIp.isEmpty()) 10 else 3) {
             val nodes = EasyTierService.collectNodeInfos(config.instanceName)
             val localNode = nodes.find { it.isLocal }
             if (localNode != null && localNode.virtualIp.isNotEmpty()) {
                 assignedIp = localNode.virtualIp
-                routes = EasyTierService.collectNetworkInfoJson()
-                    ?.let { collectProxyCidrsFromJson(it, config.instanceName) }
-                    .orEmpty()
+            }
+
+            routes = EasyTierService.collectNetworkInfoJson()
+                ?.let { collectProxyCidrsFromJson(it, config.instanceName) }
+                .orEmpty()
+
+            if (assignedIp.isNotEmpty()) {
                 return assignedIp to routes
             }
-            delay(500)
+            delay(300)
         }
 
-        return assignedIp to routes
+        return assignedIp.ifEmpty { "10.144.144.1" } to routes
     }
 
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
@@ -151,6 +165,20 @@ fun OneClickPage() {
     LaunchedEffect(Unit) {
         EasyTierService.refreshRuntimeState()
         runtimeReady = true
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    EasyTierService.refreshRuntimeState()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(runtimeReady, runtimeState.runningInstances, hostSession?.instanceName, guestSession?.instanceName) {
@@ -224,6 +252,11 @@ fun OneClickPage() {
                     onStart = {
                         scope.launch {
                             setLoading(true); setStatus("", false)
+                            if (otherRunningInstances.isNotEmpty()) {
+                                setLoading(false)
+                                setStatus("请先停止网络页或其他已运行实例", true)
+                                return@launch
+                            }
                             if (guestRunning) {
                                 setLoading(false)
                                 setStatus("请先离开当前已加入的网络", true)
@@ -282,6 +315,10 @@ fun OneClickPage() {
                     virtualIp = guestSession?.virtualIp.orEmpty(),
                     onJoin = {
                         scope.launch {
+                            if (otherRunningInstances.isNotEmpty()) {
+                                setStatus("请先停止网络页或其他已运行实例", true)
+                                return@launch
+                            }
                             if (hostRunning) {
                                 setStatus("请先停止当前房主网络", true)
                                 return@launch

@@ -1,7 +1,12 @@
 package com.easytier.service
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.util.Log
 import com.easytier.backend.AndroidAdapter
@@ -29,6 +34,9 @@ object EasyTierService {
     private var adapter: AndroidAdapter? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var monitorJob: Job? = null
+    private var appContext: Context? = null
+    private var connectivityManager: ConnectivityManager? = null
+    private var vpnNetworkCallback: ConnectivityManager.NetworkCallback? = null
     private val _runtimeState = MutableStateFlow(RuntimeState())
     val runtimeState: StateFlow<RuntimeState> = _runtimeState.asStateFlow()
 
@@ -57,7 +65,12 @@ object EasyTierService {
         return created
     }
 
-    fun initialize(): Boolean {
+    fun initialize(context: Context? = null): Boolean {
+        if (context != null) {
+            appContext = context.applicationContext
+            registerVpnNetworkCallback(context.applicationContext)
+        }
+
         return try {
             val result = backend.initialize()
             initialized = result.success
@@ -190,6 +203,41 @@ object EasyTierService {
             stopNetwork(instanceName)
             refreshRuntimeState()
         }
+    }
+
+    private fun registerVpnNetworkCallback(context: Context) {
+        if (vpnNetworkCallback != null) {
+            return
+        }
+
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                scope.launch {
+                    refreshRuntimeState()
+                }
+            }
+
+            override fun onLost(network: Network) {
+                val activeInstanceName = _runtimeState.value.activeVpnInstanceName ?: return
+                LogService.warn("检测到系统 VPN 网络断开: $activeInstanceName", source = TAG)
+                notifyVpnStopped(activeInstanceName)
+                scope.launch {
+                    stopNetwork(activeInstanceName)
+                    refreshRuntimeState()
+                }
+            }
+        }
+
+        manager.registerNetworkCallback(
+            NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+                .build(),
+            callback
+        )
+
+        connectivityManager = manager
+        vpnNetworkCallback = callback
     }
 
     suspend fun collectNodeInfos(instanceName: String): List<NodeInfo> {

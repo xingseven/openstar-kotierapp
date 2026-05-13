@@ -29,14 +29,14 @@ data class OneClickSessionSnapshot(
     }
 
     fun toNetworkConfig(): NetworkConfig = NetworkConfig(
-        instanceName = instanceName,
+        instanceName = instanceName.ifBlank { NetworkConfig.oneClickInstanceName() },
         hostname = hostname,
         networkName = networkName,
         networkSecret = networkSecret,
         dhcp = dhcp,
         ipv4 = ipv4,
         privateMode = true,
-        servers = NetworkConfig.defaultServers().toMutableList(),
+        servers = NetworkConfig.oneClickServers().toMutableList(),
     )
 
     companion object {

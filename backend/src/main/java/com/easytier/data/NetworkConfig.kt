@@ -206,13 +206,23 @@ data class NetworkConfig(
 
     companion object {
         private const val PREFIX = "EasyTierET-"
+        private const val ONE_CLICK_INSTANCE_NAME = "QtET-OneClick"
         private const val LEGACY_PUBLIC_SERVER = "wss://qtet-public.070219.xyz"
         private val DEFAULT_SERVERS = listOf(
             "tcp://225284.xyz:11010",
             "tcp://183.230.36.171:11010"
         )
+        private val ONE_CLICK_SERVERS = listOf(
+            "tcp://us01.225284.xyz:11010",
+            "tcp://225284.xyz:11010",
+            "tcp://sjc1.clusters.zeabur.com:27773"
+        )
 
         fun defaultServers(): List<String> = DEFAULT_SERVERS
+
+        fun oneClickServers(): List<String> = ONE_CLICK_SERVERS
+
+        fun oneClickInstanceName(): String = ONE_CLICK_INSTANCE_NAME
 
         fun fromJson(obj: JSONObject): NetworkConfig {
             return NetworkConfig(
@@ -304,23 +314,26 @@ data class NetworkConfig(
 
         fun createOneClickHostConfig(networkName: String, networkSecret: String): NetworkConfig {
             return NetworkConfig(
+                instanceName = oneClickInstanceName(),
                 hostname = "host",
                 networkName = networkName,
                 networkSecret = networkSecret,
                 dhcp = false,
                 privateMode = true,
-                ipv4 = "11.45.14.1"
+                ipv4 = "11.45.14.1",
+                servers = oneClickServers().toMutableList(),
             )
         }
 
         fun createOneClickGuestConfig(networkName: String, networkSecret: String): NetworkConfig {
             return NetworkConfig(
+                instanceName = oneClickInstanceName(),
                 hostname = "guest",
                 networkName = networkName,
                 networkSecret = networkSecret,
                 dhcp = true,
                 privateMode = true,
-                servers = defaultServers().toMutableList()
+                servers = oneClickServers().toMutableList()
             )
         }
 

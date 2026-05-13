@@ -8,6 +8,6 @@ class EasyTierApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         LogService.info("EasyTier 应用启动", source = "App")
-        EasyTierService.initialize()
+        EasyTierService.initialize(this)
     }
 }

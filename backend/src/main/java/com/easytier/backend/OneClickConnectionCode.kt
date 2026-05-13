@@ -2,9 +2,10 @@ package com.easytier.backend
 
 import kotlin.random.Random
 
-private const val BASE32 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+private const val PRIMARY_BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+private const val LEGACY_BASE32 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-fun base32Encode(data: ByteArray): String {
+fun base32Encode(data: ByteArray, alphabet: String = PRIMARY_BASE32): String {
     val result = StringBuilder()
     var buffer = 0
     var bitsLeft = 0
@@ -13,26 +14,26 @@ fun base32Encode(data: ByteArray): String {
         buffer = (buffer shl 8) or (byte.toInt() and 0xFF)
         bitsLeft += 8
         while (bitsLeft >= 5) {
-            result.append(BASE32[(buffer shr (bitsLeft - 5)) and 0x1F])
+            result.append(alphabet[(buffer shr (bitsLeft - 5)) and 0x1F])
             bitsLeft -= 5
         }
     }
 
     if (bitsLeft > 0) {
-        result.append(BASE32[(buffer shl (5 - bitsLeft)) and 0x1F])
+        result.append(alphabet[(buffer shl (5 - bitsLeft)) and 0x1F])
     }
 
     return result.toString()
 }
 
-fun base32Decode(encoded: String): ByteArray {
+private fun base32Decode(encoded: String, alphabet: String): ByteArray {
     val bytes = ArrayList<Byte>()
     var buffer = 0
     var bitsLeft = 0
 
     for (ch in encoded.uppercase()) {
         if (ch == '=') continue
-        val index = BASE32.indexOf(ch)
+        val index = alphabet.indexOf(ch)
         if (index < 0) continue
 
         buffer = (buffer shl 5) or index
@@ -45,6 +46,18 @@ fun base32Decode(encoded: String): ByteArray {
     }
 
     return bytes.toByteArray()
+}
+
+private fun decodeConnectionCodeWithAlphabet(code: String, alphabet: String): Pair<String, String> {
+    val encodedNetworkId = code.substring(0, 12)
+    val encodedPassword = code.substring(12, 25)
+    val networkIdData = base32Decode(encodedNetworkId, alphabet)
+    val passwordData = base32Decode(encodedPassword, alphabet)
+
+    if (networkIdData.size != 7 || passwordData.size != 8) return "" to ""
+    if (networkIdData[0] != 'Q'.code.toByte() || networkIdData[1] != 'E'.code.toByte()) return "" to ""
+
+    return "QtET-OneClick-" + networkIdData.decodeToString() to passwordData.decodeToString()
 }
 
 fun generateRoomCredentials(): Pair<String, String> {
@@ -91,13 +104,10 @@ fun decodeConnectionCode(code: String): Pair<String, String> {
     val cleanCode = code.uppercase().replace(Regex("[^A-Z2-9]"), "")
     if (cleanCode.length != 25) return "" to ""
 
-    val encodedNetworkId = cleanCode.substring(0, 12)
-    val encodedPassword = cleanCode.substring(12, 25)
-    val networkIdData = base32Decode(encodedNetworkId)
-    val passwordData = base32Decode(encodedPassword)
+    val primaryResult = decodeConnectionCodeWithAlphabet(cleanCode, PRIMARY_BASE32)
+    if (primaryResult.first.isNotEmpty() && primaryResult.second.isNotEmpty()) {
+        return primaryResult
+    }
 
-    if (networkIdData.size != 7 || passwordData.size != 8) return "" to ""
-    if (networkIdData[0] != 'Q'.code.toByte() || networkIdData[1] != 'E'.code.toByte()) return "" to ""
-
-    return "QtET-OneClick-" + networkIdData.decodeToString() to passwordData.decodeToString()
+    return decodeConnectionCodeWithAlphabet(cleanCode, LEGACY_BASE32)
 }

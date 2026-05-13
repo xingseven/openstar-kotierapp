@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.backend.csvToMutableStringList
 import com.easytier.backend.collectProxyCidrsFromJson
-import com.easytier.backend.collectRunningInstanceNames
 import com.easytier.data.NetworkConfig
 import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.CompactTopBar
@@ -42,8 +41,10 @@ import com.easytier.service.LogService
 import com.easytier.service.SettingsRepository
 import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
-import com.easytier.ui.components.CustomSwitch
 import com.easytier.ui.components.NodeInfoCard
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -51,6 +52,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun NetworkConfigPage() {
     val context = LocalContext.current as Activity
+    val lifecycleOwner = context as LifecycleOwner
     val scope = rememberCoroutineScope()
     val repo = LocalSettingsRepository.current
     val runtimeState by EasyTierService.runtimeState.collectAsState()
@@ -71,9 +73,35 @@ fun NetworkConfigPage() {
         configs = ArrayList(configs)
     }
 
+    fun showToast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    fun updateSelectedConfig(mutator: (NetworkConfig) -> Unit) {
+        if (selectedIndex !in configs.indices) return
+        val updated = configs.toMutableList()
+        mutator(updated[selectedIndex])
+        configs = updated
+        repo.saveNetworkConfigs(updated)
+    }
+
     // 配置持久化
     fun saveConfigs() {
         repo.saveNetworkConfigs(configs)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    EasyTierService.refreshRuntimeState()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // VPN 授权相关
@@ -91,7 +119,7 @@ fun NetworkConfigPage() {
         if (result.resultCode == Activity.RESULT_OK) {
             android.util.Log.i("NetworkConfig", "VPN OK, IP=$assignedIp, routes=$routes")
             EasyTierService.startVpnService(context, config.instanceName,
-                assignedIp.ifEmpty { config.ipv4.ifEmpty { "10.144.144.1" } }, 24, routes)
+                assignedIp.ifEmpty { NetworkConfig.vpnIpv4Address(config.ipv4).ifEmpty { "10.144.144.1" } }, 24, routes)
             isRunning = true
             config.isRunning = true
             isLoading = false
@@ -99,6 +127,10 @@ fun NetworkConfigPage() {
             scope.launch {
                 EasyTierService.stopNetwork(config.instanceName)
             }
+            config.isRunning = false
+            isRunning = false
+            forceRecompose()
+            showToast("VPN 授权被拒绝")
             isLoading = false
         }
     }
@@ -306,7 +338,7 @@ fun NetworkConfigPage() {
 
                         val dhcpOn = configs.getOrNull(selectedIndex)?.dhcp ?: true
                         CustomSwitch(label = "DHCP 自动分配 IP", value = dhcpOn) { v ->
-                            configs = configs.toMutableList().also { it[selectedIndex].dhcp = v }
+                            updateSelectedConfig { it.dhcp = v }
                         }
                         if (!dhcpOn) {
                             Spacer(Modifier.height(5.dp))
@@ -438,41 +470,41 @@ fun NetworkConfigPage() {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                             Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                                 SectionLabel("协议与传输")
-                                CustomSwitch("KCP 代理", "启用 KCP 代理入站", configs[selectedIndex].enableKcpProxy) { configs[selectedIndex].enableKcpProxy = it; forceRecompose() }
-                                CustomSwitch("禁用 KCP 入站", configs[selectedIndex].disableKcpInput) { configs[selectedIndex].disableKcpInput = it; forceRecompose() }
-                                CustomSwitch("QUIC 代理", "启用 QUIC 代理入站", configs[selectedIndex].enableQuicProxy) { configs[selectedIndex].enableQuicProxy = it; forceRecompose() }
-                                CustomSwitch("禁用 QUIC 入站", configs[selectedIndex].disableQuicInput) { configs[selectedIndex].disableQuicInput = it; forceRecompose() }
-                                CustomSwitch("禁用中继 KCP", configs[selectedIndex].disableRelayKcp) { configs[selectedIndex].disableRelayKcp = it; forceRecompose() }
-                                CustomSwitch("禁用中继 QUIC", configs[selectedIndex].disableRelayQuic) { configs[selectedIndex].disableRelayQuic = it; forceRecompose() }
-                                CustomSwitch("允许中继外部网络 KCP", configs[selectedIndex].enableRelayForeignNetworkKcp) { configs[selectedIndex].enableRelayForeignNetworkKcp = it; forceRecompose() }
-                                CustomSwitch("允许中继外部网络 QUIC", configs[selectedIndex].enableRelayForeignNetworkQuic) { configs[selectedIndex].enableRelayForeignNetworkQuic = it; forceRecompose() }
+                                CustomSwitch("KCP 代理", "启用 KCP 代理入站", configs[selectedIndex].enableKcpProxy) { updateSelectedConfig { config -> config.enableKcpProxy = it } }
+                                CustomSwitch("禁用 KCP 入站", configs[selectedIndex].disableKcpInput) { updateSelectedConfig { config -> config.disableKcpInput = it } }
+                                CustomSwitch("QUIC 代理", "启用 QUIC 代理入站", configs[selectedIndex].enableQuicProxy) { updateSelectedConfig { config -> config.enableQuicProxy = it } }
+                                CustomSwitch("禁用 QUIC 入站", configs[selectedIndex].disableQuicInput) { updateSelectedConfig { config -> config.disableQuicInput = it } }
+                                CustomSwitch("禁用中继 KCP", configs[selectedIndex].disableRelayKcp) { updateSelectedConfig { config -> config.disableRelayKcp = it } }
+                                CustomSwitch("禁用中继 QUIC", configs[selectedIndex].disableRelayQuic) { updateSelectedConfig { config -> config.disableRelayQuic = it } }
+                                CustomSwitch("允许中继外部网络 KCP", configs[selectedIndex].enableRelayForeignNetworkKcp) { updateSelectedConfig { config -> config.enableRelayForeignNetworkKcp = it } }
+                                CustomSwitch("允许中继外部网络 QUIC", configs[selectedIndex].enableRelayForeignNetworkQuic) { updateSelectedConfig { config -> config.enableRelayForeignNetworkQuic = it } }
 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                                 SectionLabel("网络与连接")
-                                CustomSwitch("禁用 UDP 打孔", configs[selectedIndex].disableUdpHolePunching) { configs[selectedIndex].disableUdpHolePunching = it; forceRecompose() }
-                                CustomSwitch("禁用 TCP 打孔", configs[selectedIndex].disableTcpHolePunching) { configs[selectedIndex].disableTcpHolePunching = it; forceRecompose() }
-                                CustomSwitch("禁用 UPnP/NAT-PMP", configs[selectedIndex].disableUpnp) { configs[selectedIndex].disableUpnp = it; forceRecompose() }
-                                CustomSwitch("禁用对称 NAT 打孔", configs[selectedIndex].disableSymHolePunching) { configs[selectedIndex].disableSymHolePunching = it; forceRecompose() }
-                                CustomSwitch("禁用 P2P", configs[selectedIndex].disableP2p) { configs[selectedIndex].disableP2p = it; forceRecompose() }
-                                CustomSwitch("需要 P2P", configs[selectedIndex].needP2p) { configs[selectedIndex].needP2p = it; forceRecompose() }
-                                CustomSwitch("懒 P2P", configs[selectedIndex].lazyP2p) { configs[selectedIndex].lazyP2p = it; forceRecompose() }
-                                CustomSwitch("仅 P2P", configs[selectedIndex].p2pOnly) { configs[selectedIndex].p2pOnly = it; forceRecompose() }
-                                CustomSwitch("禁用 IPv6", configs[selectedIndex].disableIpv6) { configs[selectedIndex].disableIpv6 = it; forceRecompose() }
-                                CustomSwitch("延迟优先", "优先选择延迟最低的路径", configs[selectedIndex].latencyFirst) { configs[selectedIndex].latencyFirst = it; forceRecompose() }
+                                CustomSwitch("禁用 UDP 打孔", configs[selectedIndex].disableUdpHolePunching) { updateSelectedConfig { config -> config.disableUdpHolePunching = it } }
+                                CustomSwitch("禁用 TCP 打孔", configs[selectedIndex].disableTcpHolePunching) { updateSelectedConfig { config -> config.disableTcpHolePunching = it } }
+                                CustomSwitch("禁用 UPnP/NAT-PMP", configs[selectedIndex].disableUpnp) { updateSelectedConfig { config -> config.disableUpnp = it } }
+                                CustomSwitch("禁用对称 NAT 打孔", configs[selectedIndex].disableSymHolePunching) { updateSelectedConfig { config -> config.disableSymHolePunching = it } }
+                                CustomSwitch("禁用 P2P", configs[selectedIndex].disableP2p) { updateSelectedConfig { config -> config.disableP2p = it } }
+                                CustomSwitch("需要 P2P", configs[selectedIndex].needP2p) { updateSelectedConfig { config -> config.needP2p = it } }
+                                CustomSwitch("懒 P2P", configs[selectedIndex].lazyP2p) { updateSelectedConfig { config -> config.lazyP2p = it } }
+                                CustomSwitch("仅 P2P", configs[selectedIndex].p2pOnly) { updateSelectedConfig { config -> config.p2pOnly = it } }
+                                CustomSwitch("禁用 IPv6", configs[selectedIndex].disableIpv6) { updateSelectedConfig { config -> config.disableIpv6 = it } }
+                                CustomSwitch("延迟优先", "优先选择延迟最低的路径", configs[selectedIndex].latencyFirst) { updateSelectedConfig { config -> config.latencyFirst = it } }
 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                                 SectionLabel("高级选项")
-                                CustomSwitch("加密", "启用网络加密", configs[selectedIndex].enableEncryption) { configs[selectedIndex].enableEncryption = it; forceRecompose() }
-                                CustomSwitch("出口节点", "将本机作为网络出口", configs[selectedIndex].enableExitNode) { configs[selectedIndex].enableExitNode = it; forceRecompose() }
-                                CustomSwitch("系统转发", "启用系统 IP 转发", configs[selectedIndex].systemForwarding) { configs[selectedIndex].systemForwarding = it; forceRecompose() }
-                                CustomSwitch("多线程", configs[selectedIndex].multiThread) { configs[selectedIndex].multiThread = it; forceRecompose() }
-                                CustomSwitch("Smoltcp 协议栈", configs[selectedIndex].useSmoltcp) { configs[selectedIndex].useSmoltcp = it; forceRecompose() }
-                                CustomSwitch("绑定设备", configs[selectedIndex].bindDevice) { configs[selectedIndex].bindDevice = it; forceRecompose() }
-                                CustomSwitch("私有模式", "仅允许白名单节点加入", configs[selectedIndex].privateMode) { configs[selectedIndex].privateMode = it; forceRecompose() }
-                                CustomSwitch("中转所有 RPC", configs[selectedIndex].relayAllPeerRpc) { configs[selectedIndex].relayAllPeerRpc = it; forceRecompose() }
-                                CustomSwitch("接受 DNS", configs[selectedIndex].acceptDns) { configs[selectedIndex].acceptDns = it; forceRecompose() }
-                                CustomSwitch("转发 UDP 广播", "改善依赖局域网发现的软件兼容性", configs[selectedIndex].enableUdpBroadcastRelay) { configs[selectedIndex].enableUdpBroadcastRelay = it; forceRecompose() }
-                                CustomSwitch("禁用 TUN", configs[selectedIndex].noTun) { configs[selectedIndex].noTun = it; forceRecompose() }
+                                CustomSwitch("加密", "启用网络加密", configs[selectedIndex].enableEncryption) { updateSelectedConfig { config -> config.enableEncryption = it } }
+                                CustomSwitch("出口节点", "将本机作为网络出口", configs[selectedIndex].enableExitNode) { updateSelectedConfig { config -> config.enableExitNode = it } }
+                                CustomSwitch("系统转发", "启用系统 IP 转发", configs[selectedIndex].systemForwarding) { updateSelectedConfig { config -> config.systemForwarding = it } }
+                                CustomSwitch("多线程", configs[selectedIndex].multiThread) { updateSelectedConfig { config -> config.multiThread = it } }
+                                CustomSwitch("Smoltcp 协议栈", configs[selectedIndex].useSmoltcp) { updateSelectedConfig { config -> config.useSmoltcp = it } }
+                                CustomSwitch("绑定设备", configs[selectedIndex].bindDevice) { updateSelectedConfig { config -> config.bindDevice = it } }
+                                CustomSwitch("私有模式", "仅允许白名单节点加入", configs[selectedIndex].privateMode) { updateSelectedConfig { config -> config.privateMode = it } }
+                                CustomSwitch("中转所有 RPC", configs[selectedIndex].relayAllPeerRpc) { updateSelectedConfig { config -> config.relayAllPeerRpc = it } }
+                                CustomSwitch("接受 DNS", configs[selectedIndex].acceptDns) { updateSelectedConfig { config -> config.acceptDns = it } }
+                                CustomSwitch("转发 UDP 广播", "改善依赖局域网发现的软件兼容性", configs[selectedIndex].enableUdpBroadcastRelay) { updateSelectedConfig { config -> config.enableUdpBroadcastRelay = it } }
+                                CustomSwitch("禁用 TUN", configs[selectedIndex].noTun) { updateSelectedConfig { config -> config.noTun = it } }
 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                                 SectionLabel("设备与协议")
@@ -501,7 +533,7 @@ fun NetworkConfigPage() {
                                 OutlinedTextField(value = exitNodesText, onValueChange = { exitNodesText = it; saveCurrentConfig() }, label = { Text("出口节点（逗号分隔）") }, placeholder = { Text("peer-id") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
                                 Spacer(Modifier.height(5.dp))
-                                CustomSwitch("启用外部网络白名单", configs[selectedIndex].foreignNetworkWhitelistEnabled) { configs[selectedIndex].foreignNetworkWhitelistEnabled = it; forceRecompose() }
+                                CustomSwitch("启用外部网络白名单", configs[selectedIndex].foreignNetworkWhitelistEnabled) { updateSelectedConfig { config -> config.foreignNetworkWhitelistEnabled = it } }
                                 if (configs[selectedIndex].foreignNetworkWhitelistEnabled) {
                                     Spacer(Modifier.height(5.dp))
                                     OutlinedTextField(value = whitelistText, onValueChange = { whitelistText = it; saveCurrentConfig() }, label = { Text("外部网络白名单（逗号分隔）") }, placeholder = { Text("network1, network2") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -514,88 +546,111 @@ fun NetworkConfigPage() {
                 Spacer(Modifier.height(8.dp))
 
                 // 操作按钮
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = {
-                            if (selectedIndex !in configs.indices) return@Button
-                            saveCurrentConfig()
-                            val cfg = configs[selectedIndex]
-                            scope.launch {
-                                isLoading = true
-                                if (isRunning) {
-                                    // ── 停止网络 ──
-                                    EasyTierService.stopVpnService(context)
-                                    val result = EasyTierService.stopNetwork(cfg.instanceName)
-                                    if (result.success) {
-                                        isRunning = false; cfg.isRunning = false; nodes = emptyList()
-                                    }
-                                    isLoading = false
-                                } else {
-                                    // ── 启动网络 ──
-                                    val result = EasyTierService.startNetwork(cfg)
-                                    if (!result.success) {
-                                        isLoading = false; return@launch
-                                    }
-                                    LogService.info("网络已启动，等待 IP 分配", source = "NetworkConfig")
+                Button(
+                    onClick = {
+                        if (selectedIndex !in configs.indices) return@Button
+                        saveCurrentConfig()
+                        val cfg = configs[selectedIndex]
+                        scope.launch {
+                            if (!isRunning) {
+                                if (cfg.networkName.isBlank()) {
+                                    showToast("请先填写网络名称")
+                                    return@launch
+                                }
 
-                                    // 等待 EasyTier 分配虚拟 IP 并获取路由
-                                    var assignedIp = ""
-                                    var routes = mutableListOf<String>()
-                                    for (i in 0..30) {
-                                        val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
-                                        val localNode = currentNodes.find { it.isLocal }
-                                        if (localNode != null && localNode.virtualIp.isNotEmpty()) {
-                                            assignedIp = localNode.virtualIp
-                                            // 从 backend 获取代理 CIDR 路由
-                                            val jsonStr = EasyTierService.collectNetworkInfoJson()
-                                            if (jsonStr != null) {
-                                                routes = collectProxyCidrsFromJson(jsonStr, cfg.instanceName).toMutableList()
-                                            }
-                                            break
-                                        }
-                                        delay(500)
-                                    }
-                                    LogService.info("分配的 IP: $assignedIp, 路由: $routes", source = "NetworkConfig")
-                                    if (assignedIp.isEmpty()) {
-                                        LogService.warn("IP 分配超时，使用默认 IP", source = "NetworkConfig")
-                                        assignedIp = cfg.ipv4.ifEmpty { "10.144.144.1" }
-                                    }
-
-                                    // 请求 VPN 授权
-                                    val intent = VpnService.prepare(context)
-                                    if (intent != null) {
-                                        startPendingConfig = cfg
-                                        startPendingIp = assignedIp
-                                        startPendingRoutes = routes
-                                        vpnPermissionLauncher.launch(intent)
-                                        return@launch
-                                    }
-                                    // 已授权，直接启动 VPN（带路由）
-                                    EasyTierService.startVpnService(context, cfg.instanceName, assignedIp, 24, routes)
-                                    isRunning = true; cfg.isRunning = true; isLoading = false
+                                if (runtimeState.runningInstances.any { it != cfg.instanceName }) {
+                                    showToast("请先停止当前一键联机或其他网络")
+                                    return@launch
                                 }
                             }
-                        },
-                        enabled = !isLoading,
-                        modifier = Modifier.weight(1f).height(44.dp),
-                        colors = if (!isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                                 else ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
-                    ) {
-                        AppIcon(if (!isRunning) AppIcons.Play else AppIcons.Stop, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (isLoading) "处理中..." else if (!isRunning) "启动网络" else "停止网络")
-                    }
 
-                    Spacer(Modifier.width(10.dp))
+                            isLoading = true
+                            if (isRunning) {
+                                EasyTierService.stopVpnService(context)
+                                val result = EasyTierService.stopNetwork(cfg.instanceName)
+                                if (result.success) {
+                                    isRunning = false
+                                    cfg.isRunning = false
+                                    nodes = emptyList()
+                                    forceRecompose()
+                                }
+                                isLoading = false
+                            } else {
+                                val result = EasyTierService.startNetwork(cfg)
+                                if (!result.success) {
+                                    isLoading = false
+                                    showToast("启动失败: ${result.errorMessage}")
+                                    return@launch
+                                }
 
-                    OutlinedButton(
-                        onClick = { /* 一键联机可通过底部导航访问 */ },
-                        modifier = Modifier.weight(1f).height(44.dp)
-                    ) {
-                        AppIcon(AppIcons.Flash, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("一键联机")
-                    }
+                                isRunning = true
+                                cfg.isRunning = true
+                                forceRecompose()
+                                LogService.info("网络已启动，等待 IP 分配", source = "NetworkConfig")
+
+                                if (cfg.noTun) {
+                                    isLoading = false
+                                    showToast("网络已启动（禁用 TUN）")
+                                    return@launch
+                                }
+
+                                var assignedIp = if (!cfg.dhcp && cfg.ipv4.isNotBlank()) {
+                                    NetworkConfig.vpnIpv4Address(cfg.ipv4)
+                                } else {
+                                    ""
+                                }
+                                var routes = mutableListOf<String>()
+                                val attempts = if (assignedIp.isEmpty()) 10 else 3
+                                repeat(attempts) {
+                                    val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
+                                    val localNode = currentNodes.find { it.isLocal }
+                                    if (localNode != null && localNode.virtualIp.isNotEmpty()) {
+                                        assignedIp = localNode.virtualIp
+                                    }
+                                    val jsonStr = EasyTierService.collectNetworkInfoJson()
+                                    if (jsonStr != null) {
+                                        routes = collectProxyCidrsFromJson(jsonStr, cfg.instanceName).toMutableList()
+                                    }
+                                    if (assignedIp.isNotEmpty()) {
+                                        return@repeat
+                                    }
+                                    delay(300)
+                                }
+
+                                LogService.info("分配的 IP: $assignedIp, 路由: $routes", source = "NetworkConfig")
+                                if (assignedIp.isEmpty()) {
+                                    assignedIp = NetworkConfig.vpnIpv4Address(cfg.ipv4).ifEmpty { "10.144.144.1" }
+                                }
+
+                                val intent = VpnService.prepare(context)
+                                if (intent != null) {
+                                    startPendingConfig = cfg
+                                    startPendingIp = assignedIp
+                                    startPendingRoutes = routes
+                                    vpnPermissionLauncher.launch(intent)
+                                    return@launch
+                                }
+
+                                EasyTierService.startVpnService(context, cfg.instanceName, assignedIp, 24, routes)
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = if (!isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                             else ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
+                ) {
+                    AppIcon(if (!isRunning) AppIcons.Play else AppIcons.Stop, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        when {
+                            isLoading && isRunning -> "停止中..."
+                            isLoading -> "启动中..."
+                            !isRunning -> "启动网络"
+                            else -> "停止网络"
+                        }
+                    )
                 }
 
                 Spacer(Modifier.height(8.dp))

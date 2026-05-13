@@ -1,8 +1,6 @@
 ﻿package com.easytier.ui.pages
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.annotation.DrawableRes
@@ -57,22 +54,21 @@ fun HomePage() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+                    .padding(start = 10.dp, end = 10.dp, bottom = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(30.dp),
+                    shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                     tonalElevation = 0.dp,
-                    shadowElevation = 20.dp
+                    shadowElevation = 12.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(62.dp)
-                            .padding(horizontal = 8.dp),
+                            .height(52.dp)
+                            .padding(horizontal = 6.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -96,7 +92,7 @@ fun HomePage() {
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(width = 54.dp, height = 30.dp)
+                                            .size(width = 46.dp, height = 24.dp)
                                             .background(
                                                 brush = if (selected) {
                                                     Brush.horizontalGradient(
@@ -115,25 +111,17 @@ fun HomePage() {
                                                 },
                                                 shape = RoundedCornerShape(16.dp)
                                             )
-                                            .border(
-                                                width = 1.dp,
-                                                color = if (selected) {
-                                                    Color.White.copy(alpha = 0.22f)
-                                                } else {
-                                                    Color.Transparent
-                                                },
-                                                shape = RoundedCornerShape(16.dp)
-                                            ),
+                                            ,
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             painter = painterResource(if (selected) item.selectedIconRes else item.iconRes),
                                             contentDescription = item.label,
                                             tint = contentColor,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(2.dp))
                                     Text(item.label, fontSize = 11.sp, color = if (selected) MaterialTheme.colorScheme.primary else contentColor, lineHeight = 14.sp)
                                 }
                             }
