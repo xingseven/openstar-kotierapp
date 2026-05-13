@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.BuildConfig
@@ -54,6 +55,7 @@ fun SettingsPage() {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = { CompactTopBar("设置") }
     ) { padding ->
         Column(

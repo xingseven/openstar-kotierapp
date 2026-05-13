@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -42,10 +43,11 @@ fun AppDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp),
-            shape = RoundedCornerShape(30.dp),
-            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
             tonalElevation = 0.dp,
-            shadowElevation = 16.dp
+            shadowElevation = 20.dp
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
@@ -70,8 +72,8 @@ fun AppDialog(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),

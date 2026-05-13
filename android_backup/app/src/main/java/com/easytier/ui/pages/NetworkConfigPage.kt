@@ -53,6 +53,7 @@ fun NetworkConfigPage() {
     val context = LocalContext.current as Activity
     val scope = rememberCoroutineScope()
     val repo = LocalSettingsRepository.current
+    val runtimeState by EasyTierService.runtimeState.collectAsState()
     val clipboard = remember(context) {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
@@ -186,16 +187,30 @@ fun NetworkConfigPage() {
         if (configs.isNotEmpty()) bindConfig(selectedIndex)
     }
 
-    // 页面重建时检测是否有正在运行的实例
+    // 页面重建时同步 backend / VPN 实际运行态
     LaunchedEffect(Unit) {
-        val jsonStr = EasyTierService.collectNetworkInfoJson()
-        val runningNames = jsonStr?.let { collectRunningInstanceNames(it) }.orEmpty()
+        EasyTierService.refreshRuntimeState()
+    }
 
+    LaunchedEffect(runtimeState, selectedIndex, configs.size) {
+        var changed = false
         configs.forEach { cfg ->
-            cfg.isRunning = runningNames.contains(cfg.instanceName)
+            val connected = runtimeState.isConnected(
+                instanceName = cfg.instanceName,
+                requireVpn = !cfg.noTun
+            )
+            if (cfg.isRunning != connected) {
+                cfg.isRunning = connected
+                changed = true
+            }
         }
-        if (selectedIndex in configs.indices) {
-            isRunning = configs[selectedIndex].isRunning
+        if (changed) {
+            forceRecompose()
+        }
+        isRunning = if (selectedIndex in configs.indices) {
+            configs[selectedIndex].isRunning
+        } else {
+            false
         }
     }
 
@@ -232,6 +247,7 @@ fun NetworkConfigPage() {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CompactTopBar(title = "网络配置") {
                     IconButton(onClick = { addConfig() }) { AppIcon(AppIcons.Add, contentDescription = "新建配置") }
@@ -526,8 +542,8 @@ fun NetworkConfigPage() {
                                     var assignedIp = ""
                                     var routes = mutableListOf<String>()
                                     for (i in 0..30) {
-                                        val nodes = EasyTierService.collectNodeInfos(cfg.instanceName)
-                                        val localNode = nodes.find { it.isLocal }
+                                        val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
+                                        val localNode = currentNodes.find { it.isLocal }
                                         if (localNode != null && localNode.virtualIp.isNotEmpty()) {
                                             assignedIp = localNode.virtualIp
                                             // 从 backend 获取代理 CIDR 路由

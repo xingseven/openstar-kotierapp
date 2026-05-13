@@ -7,6 +7,71 @@ import com.easytier.data.ServerEntry
 import org.json.JSONArray
 import org.json.JSONObject
 
+data class OneClickSessionSnapshot(
+    val instanceName: String,
+    val hostname: String,
+    val networkName: String,
+    val networkSecret: String,
+    val dhcp: Boolean,
+    val ipv4: String,
+    val generatedCode: String = "",
+    val virtualIp: String = "",
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("instance_name", instanceName)
+        put("hostname", hostname)
+        put("network_name", networkName)
+        put("network_secret", networkSecret)
+        put("dhcp", dhcp)
+        put("ipv4", ipv4)
+        put("generated_code", generatedCode)
+        put("virtual_ip", virtualIp)
+    }
+
+    fun toNetworkConfig(): NetworkConfig = NetworkConfig(
+        instanceName = instanceName,
+        hostname = hostname,
+        networkName = networkName,
+        networkSecret = networkSecret,
+        dhcp = dhcp,
+        ipv4 = ipv4,
+        privateMode = true,
+        servers = NetworkConfig.defaultServers().toMutableList(),
+    )
+
+    companion object {
+        fun fromJson(obj: JSONObject): OneClickSessionSnapshot {
+            return OneClickSessionSnapshot(
+                instanceName = obj.optString("instance_name", ""),
+                hostname = obj.optString("hostname", ""),
+                networkName = obj.optString("network_name", ""),
+                networkSecret = obj.optString("network_secret", ""),
+                dhcp = obj.optBoolean("dhcp", true),
+                ipv4 = obj.optString("ipv4", ""),
+                generatedCode = obj.optString("generated_code", ""),
+                virtualIp = obj.optString("virtual_ip", ""),
+            )
+        }
+
+        fun fromConfig(
+            config: NetworkConfig,
+            generatedCode: String = "",
+            virtualIp: String = "",
+        ): OneClickSessionSnapshot {
+            return OneClickSessionSnapshot(
+                instanceName = config.instanceName,
+                hostname = config.hostname,
+                networkName = config.networkName,
+                networkSecret = config.networkSecret,
+                dhcp = config.dhcp,
+                ipv4 = config.ipv4,
+                generatedCode = generatedCode,
+                virtualIp = virtualIp,
+            )
+        }
+    }
+}
+
 /** 应用设置持久化 —— 封装 SharedPreferences */
 class SettingsRepository(context: Context) {
     private val prefs: SharedPreferences =
@@ -47,6 +112,10 @@ class SettingsRepository(context: Context) {
     var logLevel: String
         get() = prefs.getString("log_level", "info") ?: "info"
         set(v) = prefs.edit().putString("log_level", v).apply()
+
+    var oneClickGuestCodeDraft: String
+        get() = prefs.getString("one_click_guest_code_draft", "") ?: ""
+        set(v) = prefs.edit().putString("one_click_guest_code_draft", v).apply()
 
     // ── 网络配置持久化 ──
 
@@ -136,6 +205,41 @@ class SettingsRepository(context: Context) {
 
     private fun isLegacyDefaultServerList(servers: List<ServerEntry>): Boolean {
         return servers.size == 1 && servers.first().isDefault && servers.first().url == "wss://qtet-public.070219.xyz"
+    }
+
+    fun saveOneClickHostSession(session: OneClickSessionSnapshot?) {
+        saveOneClickSession("one_click_host_session", session)
+    }
+
+    fun loadOneClickHostSession(): OneClickSessionSnapshot? {
+        return loadOneClickSession("one_click_host_session")
+    }
+
+    fun saveOneClickGuestSession(session: OneClickSessionSnapshot?) {
+        saveOneClickSession("one_click_guest_session", session)
+    }
+
+    fun loadOneClickGuestSession(): OneClickSessionSnapshot? {
+        return loadOneClickSession("one_click_guest_session")
+    }
+
+    private fun saveOneClickSession(key: String, session: OneClickSessionSnapshot?) {
+        val editor = prefs.edit()
+        if (session == null) {
+            editor.remove(key)
+        } else {
+            editor.putString(key, session.toJson().toString())
+        }
+        editor.apply()
+    }
+
+    private fun loadOneClickSession(key: String): OneClickSessionSnapshot? {
+        val raw = prefs.getString(key, null) ?: return null
+        return try {
+            OneClickSessionSnapshot.fromJson(JSONObject(raw))
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // ── 清除 ──

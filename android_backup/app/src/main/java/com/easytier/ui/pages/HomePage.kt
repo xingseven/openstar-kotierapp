@@ -1,10 +1,14 @@
 ﻿package com.easytier.ui.pages
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,14 +16,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.annotation.DrawableRes
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,66 +47,95 @@ private val navItems = listOf(
 
 @Composable
 fun HomePage() {
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    val stateHolder = rememberSaveableStateHolder()
 
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
-            // 自定义紧凑底部导航栏：Surface 处理颜色/阴影，Row 处理内容高度，
-            // windowInsetsPadding 处理手势区/导航条安全区，避免与 Modifier.height 冲突
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = NavigationBarDefaults.containerColor,
-                tonalElevation = NavigationBarDefaults.Elevation
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .height(56.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 20.dp
                 ) {
-                    navItems.forEachIndexed { index, item ->
-                        val selected = selectedIndex == index
-                        val contentColor = if (selected)
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clickable { selectedIndex = index },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(62.dp)
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        navItems.forEachIndexed { index, item ->
+                            val selected = selectedIndex == index
+                            val contentColor = if (selected) {
+                                Color.White
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { selectedIndex = index },
+                                contentAlignment = Alignment.Center
                             ) {
-                                if (selected) {
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        modifier = Modifier.size(48.dp, 24.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                painter = painterResource(item.selectedIconRes),
-                                                contentDescription = item.label,
-                                                tint = contentColor,
-                                                modifier = Modifier.size(20.dp)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 54.dp, height = 30.dp)
+                                            .background(
+                                                brush = if (selected) {
+                                                    Brush.horizontalGradient(
+                                                        listOf(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            MaterialTheme.colorScheme.secondary,
+                                                        )
+                                                    )
+                                                } else {
+                                                    Brush.horizontalGradient(
+                                                        listOf(
+                                                            Color.Transparent,
+                                                            Color.Transparent,
+                                                        )
+                                                    )
+                                                },
+                                                shape = RoundedCornerShape(16.dp)
                                             )
-                                        }
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (selected) {
+                                                    Color.White.copy(alpha = 0.22f)
+                                                } else {
+                                                    Color.Transparent
+                                                },
+                                                shape = RoundedCornerShape(16.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(if (selected) item.selectedIconRes else item.iconRes),
+                                            contentDescription = item.label,
+                                            tint = contentColor,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
-                                } else {
-                                    Icon(
-                                        painter = painterResource(item.iconRes),
-                                        contentDescription = item.label,
-                                        tint = contentColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(item.label, fontSize = 11.sp, color = if (selected) MaterialTheme.colorScheme.primary else contentColor, lineHeight = 14.sp)
                                 }
-                                Text(item.label, fontSize = 11.sp, color = contentColor, lineHeight = 14.sp)
                             }
                         }
                     }
@@ -107,12 +143,43 @@ fun HomePage() {
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when (selectedIndex) {
-                0 -> NetworkConfigPage()
-                1 -> OneClickPage()
-                2 -> ServersPage()
-                3 -> SettingsPage()
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFFFBFDFF),
+                                Color(0xFFF3F7FD),
+                                Color(0xFFEAF1FB),
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                Color.Transparent,
+                            )
+                        )
+                    )
+            )
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                stateHolder.SaveableStateProvider(selectedIndex) {
+                    when (selectedIndex) {
+                        0 -> NetworkConfigPage()
+                        1 -> OneClickPage()
+                        2 -> ServersPage()
+                        3 -> SettingsPage()
+                    }
+                }
             }
         }
     }

@@ -64,7 +64,7 @@ data class NetworkConfig(
         appendLine("""hostname = "$hostname"""")
         appendLine("dhcp = ${if (dhcp) "true" else "false"}")
         if (ipv4.isNotEmpty() && !dhcp) {
-            appendLine("""ipv4 = "$ipv4"""")
+            appendLine("""ipv4 = "${normalizeStaticIpv4(ipv4)}"""")
         }
 
         if (listenAddresses.isNotEmpty()) {
@@ -290,9 +290,21 @@ data class NetworkConfig(
             return "$PREFIX$suffix"
         }
 
+        fun normalizeStaticIpv4(value: String): String {
+            val trimmed = value.trim()
+            if (trimmed.isEmpty()) {
+                return ""
+            }
+            return if ('/' in trimmed) trimmed else "$trimmed/24"
+        }
+
+        fun vpnIpv4Address(value: String): String {
+            return normalizeStaticIpv4(value).substringBefore('/')
+        }
+
         fun createOneClickHostConfig(networkName: String, networkSecret: String): NetworkConfig {
             return NetworkConfig(
-                hostname = "Host-${generateRandomSuffix(4)}",
+                hostname = "host",
                 networkName = networkName,
                 networkSecret = networkSecret,
                 dhcp = false,
@@ -303,7 +315,7 @@ data class NetworkConfig(
 
         fun createOneClickGuestConfig(networkName: String, networkSecret: String): NetworkConfig {
             return NetworkConfig(
-                hostname = "Guest-${generateRandomSuffix(4)}",
+                hostname = "guest",
                 networkName = networkName,
                 networkSecret = networkSecret,
                 dhcp = true,

@@ -10,6 +10,8 @@ import kotlinx.coroutines.*
 class EasyTierVpnService : VpnService() {
     private var job: Job? = null
     private var pfd: android.os.ParcelFileDescriptor? = null
+    private var currentInstanceName: String? = null
+    private var tunAttached = false
 
     companion object {
         private const val TAG = "EasyTierVpn"
@@ -25,6 +27,7 @@ class EasyTierVpnService : VpnService() {
         val instanceName = intent?.getStringExtra("instance_name") ?: run {
             Log.w(TAG, "missing instance_name"); stopSelf(startId); return START_NOT_STICKY
         }
+        currentInstanceName = instanceName
         val ipv4 = intent.getStringExtra("ipv4") ?: ""
         val prefix = intent.getIntExtra("prefix", 24)
         val extraRoutes = intent.getStringArrayListExtra("routes") ?: arrayListOf()
@@ -84,6 +87,8 @@ class EasyTierVpnService : VpnService() {
                 val result = EasyTierJNI.setTunFd(instanceName, fd)
                 Log.i(TAG, "setTunFd result=$result")
                 if (result == 0) {
+                    tunAttached = true
+                    EasyTierService.notifyVpnStarted(instanceName)
                     LogService.info("setTunFd 成功: instance=$instanceName fd=$fd", source = TAG)
                 } else {
                     val errorMessage = EasyTierJNI.getLastError().orEmpty()
@@ -108,13 +113,48 @@ class EasyTierVpnService : VpnService() {
         return START_STICKY
     }
 
+    override fun onRevoke() {
+        Log.w(TAG, "VPN revoked by system")
+        LogService.warn("VPN 被系统关闭，准备停止网络实例", source = TAG)
+        EasyTierService.handleVpnRevoked(currentInstanceName)
+        stopSelf()
+        super.onRevoke()
+    }
+
     override fun onDestroy() {
+        detachTunFromBackend()
+        EasyTierService.notifyVpnStopped(currentInstanceName)
         super.onDestroy()
         job?.cancel()
         try { pfd?.close() } catch (e: Exception) {}
         pfd = null
+        currentInstanceName = null
         Log.d(TAG, "VPN stopped")
         LogService.info("VPN 已停止", source = TAG)
+    }
+
+    private fun detachTunFromBackend() {
+        val instanceName = currentInstanceName ?: return
+        if (!tunAttached) {
+            return
+        }
+
+        try {
+            val result = EasyTierJNI.setTunFd(instanceName, -1)
+            if (result == 0) {
+                Log.i(TAG, "detached VPN from backend: $instanceName")
+                LogService.info("setTunFd 已解绑: instance=$instanceName", source = TAG)
+            } else {
+                val errorMessage = EasyTierJNI.getLastError().orEmpty()
+                Log.e(TAG, "detach setTunFd failed: $errorMessage")
+                LogService.warn("setTunFd 解绑失败: code=$result error=$errorMessage", source = TAG)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "detach VPN error", e)
+            LogService.warn("解绑 VPN 失败: ${e.message}", source = TAG)
+        } finally {
+            tunAttached = false
+        }
     }
 
     /** 根据 IP 和前缀长度计算网络地址（如 10.126.126.3/24 → 10.126.126.0） */

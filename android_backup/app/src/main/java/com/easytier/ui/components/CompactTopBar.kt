@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,16 +27,21 @@ fun CompactTopBar(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.background,
-        tonalElevation = 0.dp
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .height(44.dp)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = title,
@@ -52,7 +58,6 @@ fun CompactTopBar(
                     content = actions
                 )
             }
-            HorizontalDivider(thickness = 0.5.dp)
         }
     }
 }

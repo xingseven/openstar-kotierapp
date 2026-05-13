@@ -7,12 +7,17 @@ import android.util.Log
 import com.easytier.backend.AndroidAdapter
 import com.easytier.backend.BackendClient
 import com.easytier.backend.BackendResult
+import com.easytier.backend.collectRunningInstanceNames
 import com.easytier.backend.JsonRpcClient
 import com.easytier.backend.jni.JniBackendClient
 import com.easytier.backend.protocol.PingResult
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 object EasyTierService {
     private const val TAG = "EasyTierService"
@@ -24,6 +29,18 @@ object EasyTierService {
     private var adapter: AndroidAdapter? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var monitorJob: Job? = null
+    private val _runtimeState = MutableStateFlow(RuntimeState())
+    val runtimeState: StateFlow<RuntimeState> = _runtimeState.asStateFlow()
+
+    data class RuntimeState(
+        val runningInstances: Set<String> = emptySet(),
+        val activeVpnInstanceName: String? = null,
+    ) {
+        fun isConnected(instanceName: String, requireVpn: Boolean = true): Boolean {
+            val networkRunning = runningInstances.contains(instanceName)
+            return networkRunning && (!requireVpn || activeVpnInstanceName == instanceName)
+        }
+    }
 
     data class EasyTierResult(val success: Boolean, val errorMessage: String = "") {
         companion object {
@@ -46,13 +63,18 @@ object EasyTierService {
             initialized = result.success
             if (result.success) {
                 Log.i(TAG, "Backend initialized")
+                scope.launch {
+                    refreshRuntimeState()
+                }
             } else {
                 Log.e(TAG, "Backend init failed: ${result.errorMessage}")
+                _runtimeState.value = RuntimeState()
             }
             result.success
         } catch (e: Exception) {
             Log.e(TAG, "init failed", e)
             initialized = false
+            _runtimeState.value = RuntimeState()
             false
         }
     }
@@ -69,6 +91,7 @@ object EasyTierService {
             val result = backend.startNetwork(config)
             if (result.success) {
                 config.isRunning = true
+                refreshRuntimeState()
                 LogService.info("网络实例已启动: ${config.instanceName}", source = TAG)
                 EasyTierResult.ok()
             } else {
@@ -89,6 +112,10 @@ object EasyTierService {
         return try {
             val result = backend.stopNetwork(instanceName)
             if (result.success) {
+                if (_runtimeState.value.activeVpnInstanceName == instanceName) {
+                    notifyVpnStopped(instanceName)
+                }
+                refreshRuntimeState()
                 LogService.info("网络实例已停止: $instanceName", source = TAG)
                 EasyTierResult.ok()
             } else {
@@ -106,10 +133,62 @@ object EasyTierService {
     suspend fun stopAllNetworks(): Boolean {
         if (!initialized) return false
         return try {
-            backend.stopAllNetworks().success
+            val stopped = backend.stopAllNetworks().success
+            if (stopped) {
+                _runtimeState.value = RuntimeState()
+            }
+            stopped
         } catch (e: Exception) {
             Log.e(TAG, "stopAll error", e)
             false
+        }
+    }
+
+    suspend fun refreshRuntimeState(): RuntimeState {
+        if (!initialized) {
+            _runtimeState.value = RuntimeState()
+            return _runtimeState.value
+        }
+
+        val runningInstances = backend.collectNetworkInfoJson()
+            ?.let(::collectRunningInstanceNames)
+            .orEmpty()
+
+        _runtimeState.update { current ->
+            current.copy(
+                runningInstances = runningInstances,
+                activeVpnInstanceName = current.activeVpnInstanceName?.takeIf { it in runningInstances }
+            )
+        }
+
+        return _runtimeState.value
+    }
+
+    fun notifyVpnStarted(instanceName: String) {
+        _runtimeState.update {
+            it.copy(activeVpnInstanceName = instanceName)
+        }
+    }
+
+    fun notifyVpnStopped(instanceName: String? = _runtimeState.value.activeVpnInstanceName) {
+        _runtimeState.update { current ->
+            if (instanceName == null || current.activeVpnInstanceName == instanceName) {
+                current.copy(activeVpnInstanceName = null)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun handleVpnRevoked(instanceName: String?) {
+        notifyVpnStopped(instanceName)
+        if (instanceName.isNullOrBlank() || !initialized) {
+            return
+        }
+
+        scope.launch {
+            stopNetwork(instanceName)
+            refreshRuntimeState()
         }
     }
 

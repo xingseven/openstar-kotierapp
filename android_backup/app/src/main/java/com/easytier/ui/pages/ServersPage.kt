@@ -121,6 +121,7 @@ fun ServersPage() {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CompactTopBar(title = "服务器") {
                     IconButton(onClick = { showAddDialog = true }) {
