@@ -1,5 +1,6 @@
 ﻿package com.easytier.ui.pages
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,14 +12,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.BuildConfig
+import com.easytier.service.UpdateChecker
 import com.easytier.service.SettingsRepository
 import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
 import com.easytier.ui.components.CompactTopBar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +32,13 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     var darkMode by remember { mutableStateOf(repo.darkMode) }
     var logLevel by remember { mutableStateOf(repo.logLevel) }
     var showClearDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
 
     if (showClearDialog) {
         AppDialog(
@@ -45,6 +56,36 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 "这将清除所有配置、服务器收藏和设置。此操作不可撤销。",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    // 更新对话框
+    if (showUpdateDialog && updateInfo != null) {
+        val info = updateInfo!!
+        AppDialog(
+            title = "发现新版本 v${info.latestVersion}",
+            onDismissRequest = { showUpdateDialog = false },
+            confirmText = if (isDownloading) "下载中 ${downloadProgress}%" else "下载更新",
+            confirmEnabled = !isDownloading,
+            onConfirm = {
+                isDownloading = true
+                scope.launch {
+                    val err = UpdateChecker(context).downloadAndInstall(info) { pct ->
+                        downloadProgress = pct
+                    }
+                    isDownloading = false
+                    showUpdateDialog = false
+                    if (err != null) {
+                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+        ) {
+            Text(
+                info.releaseNotes.ifEmpty { "暂无更新说明" },
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -112,6 +153,37 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 InfoRow("版本", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
                 InfoRow("运行平台", "Android")
                 InfoRow("后端", "EasyTier JNI")
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isCheckingUpdate) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(if (isCheckingUpdate) "检查中..." else "检查更新", fontSize = 13.sp)
+                        }
+                    },
+                    trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isCheckingUpdate && !isDownloading) {
+                            isCheckingUpdate = true
+                            scope.launch {
+                                val result = UpdateChecker(context).check()
+                                isCheckingUpdate = false
+                                when (result) {
+                                    is UpdateChecker.Result.Available -> {
+                                        updateInfo = result.info
+                                        showUpdateDialog = true
+                                    }
+                                    is UpdateChecker.Result.Unavailable -> {
+                                        Toast.makeText(context, result.reason, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                )
             }
 
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
