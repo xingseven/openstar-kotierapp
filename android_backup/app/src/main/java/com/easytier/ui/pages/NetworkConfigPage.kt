@@ -557,6 +557,13 @@ fun NetworkConfigPage() {
                                     showToast("请先填写网络名称")
                                     return@launch
                                 }
+                                if (!cfg.dhcp && cfg.ipv4.isBlank()) {
+                                    cfg.dhcp = true
+                                    saveConfigs()
+                                    forceRecompose()
+                                    LogService.warn("检测到旧配置缺少静态 IPv4，已自动回退为 DHCP", source = "NetworkConfig")
+                                    showToast("检测到旧配置缺少静态 IPv4，已自动切回 DHCP")
+                                }
 
                                 if (runtimeState.runningInstances.any { it != cfg.instanceName }) {
                                     showToast("请先停止当前一键联机或其他网络")
@@ -600,7 +607,7 @@ fun NetworkConfigPage() {
                                     ""
                                 }
                                 var routes = mutableListOf<String>()
-                                val attempts = if (assignedIp.isEmpty()) 10 else 3
+                                val attempts = if (assignedIp.isEmpty()) 20 else 5
                                 repeat(attempts) {
                                     val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
                                     val localNode = currentNodes.find { it.isLocal }
@@ -619,7 +626,17 @@ fun NetworkConfigPage() {
 
                                 LogService.info("分配的 IP: $assignedIp, 路由: $routes", source = "NetworkConfig")
                                 if (assignedIp.isEmpty()) {
-                                    assignedIp = NetworkConfig.vpnIpv4Address(cfg.ipv4).ifEmpty { "10.144.144.1" }
+                                    val stopResult = EasyTierService.stopNetwork(cfg.instanceName)
+                                    isLoading = false
+                                    isRunning = false
+                                    cfg.isRunning = false
+                                    nodes = emptyList()
+                                    forceRecompose()
+                                    if (!stopResult.success) {
+                                        LogService.warn("未拿到虚拟 IP，回滚实例失败: ${stopResult.errorMessage}", source = "NetworkConfig")
+                                    }
+                                    showToast("未拿到本机虚拟 IP，请检查 DHCP/静态 IP、网络名称和入口服务器后重试")
+                                    return@launch
                                 }
 
                                 val intent = VpnService.prepare(context)
