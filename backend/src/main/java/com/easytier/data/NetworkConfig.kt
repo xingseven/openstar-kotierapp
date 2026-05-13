@@ -208,9 +208,9 @@ data class NetworkConfig(
         private const val PREFIX = "EasyTierET-"
         private const val ONE_CLICK_INSTANCE_NAME = "QtET-OneClick"
         private const val LEGACY_PUBLIC_SERVER = "wss://qtet-public.070219.xyz"
+        private const val DEPRECATED_DEFAULT_SERVER = "tcp://183.230.36.171:11010"
         private val DEFAULT_SERVERS = listOf(
-            "tcp://225284.xyz:11010",
-            "tcp://183.230.36.171:11010"
+            "tcp://225284.xyz:11010"
         )
         private val ONE_CLICK_SERVERS = listOf(
             "tcp://us01.225284.xyz:11010",
@@ -282,6 +282,9 @@ data class NetworkConfig(
 
         fun normalizeServers(servers: List<String>): MutableList<String> {
             val normalized = servers.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+            val legacyDefaultLike = normalized.isNotEmpty() && normalized.all {
+                it == DEFAULT_SERVERS.first() || isDeprecatedDefaultServer(it)
+            }
 
             if (normalized.isEmpty()) {
                 return DEFAULT_SERVERS.toMutableList()
@@ -291,8 +294,14 @@ data class NetworkConfig(
                 return DEFAULT_SERVERS.toMutableList()
             }
 
+            if (legacyDefaultLike) {
+                return DEFAULT_SERVERS.toMutableList()
+            }
+
             return normalized.toMutableList()
         }
+
+        fun isDeprecatedDefaultServer(url: String): Boolean = url.trim() == DEPRECATED_DEFAULT_SERVER
 
         fun generateInstanceName(): String {
             val suffix = (1..10).map { "0123456789abcdefghijklmnopqrstuvwxyz"[Random.nextInt(36)] }

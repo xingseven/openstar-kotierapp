@@ -6,12 +6,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
+import androidx.core.view.WindowCompat
 import com.easytier.service.SettingsRepository
 import com.easytier.ui.pages.HomePage
 import com.easytier.ui.pages.LocalSettingsRepository
@@ -43,6 +46,11 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = when {
                 followSystem -> isSystemInDarkTheme()
                 else -> darkMode
+            }
+            val view = LocalView.current
+
+            SideEffect {
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
             }
 
             // 提供主题变化监听器

@@ -159,10 +159,14 @@ class SettingsRepository(context: Context) {
             servers.add(ServerEntry.fromJson(obj))
         }
 
-        return if (servers.isEmpty() || isLegacyDefaultServerList(servers)) {
+        val sanitizedServers = servers
+            .filterNot { it.isDefault && NetworkConfig.isDeprecatedDefaultServer(it.url) }
+            .toMutableList()
+
+        return if (sanitizedServers.isEmpty() || isLegacyDefaultServerList(sanitizedServers)) {
             defaultServerEntries()
         } else {
-            servers
+            sanitizedServers
         }
     }
 
@@ -176,7 +180,6 @@ class SettingsRepository(context: Context) {
         return NetworkConfig.defaultServers().map { url ->
             val name = when (url) {
                 "tcp://225284.xyz:11010" -> "225284 公共服务器"
-                "tcp://183.230.36.171:11010" -> "183.230 公共服务器"
                 else -> url
             }
             ServerEntry(name = name, url = url, isDefault = true)
