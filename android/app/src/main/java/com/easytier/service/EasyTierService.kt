@@ -270,7 +270,6 @@ object EasyTierService {
                     if (!hasPhysicalNetwork) {
                         val activeInstanceName = _runtimeState.value.activeVpnInstanceName ?: return@launch
                         LogService.warn("物理网络已断开，自动关闭 VPN: $activeInstanceName", source = TAG)
-                        notifyVpnStopped(activeInstanceName)
                         stopNetwork(activeInstanceName)
                         refreshRuntimeState()
                     }
