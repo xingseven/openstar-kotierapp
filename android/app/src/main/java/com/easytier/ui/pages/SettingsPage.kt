@@ -16,8 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.BuildConfig
-import com.easytier.service.UpdateChecker
 import com.easytier.service.SettingsRepository
+import com.easytier.service.UpdateChecker
+import com.easytier.service.UpdateInfo
 import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.AppIcon
 import com.easytier.ui.components.AppIcons
@@ -34,7 +35,7 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     var showClearDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }

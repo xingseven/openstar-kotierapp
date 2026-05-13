@@ -1,8 +1,8 @@
-# QtEasyTier
+# kotier
 
 一款基于 [EasyTier](https://github.com/EasyTier/EasyTier) 去中心化引擎的 Android 异地组网工具，美观实用，帮助您快速联机组网。
 
-> 该项目由 C++/Qt 6 重构为纯 Kotlin + Jetpack Compose 实现。
+> 由Kotlin + Jetpack Compose 实现。
 
 ## 技术栈
 
@@ -46,12 +46,10 @@ android/
 │       ├── pages/      # 页面 (网络、一键联机、服务器、设置)
 │       └── theme/      # Material3 主题
 
-android_app/
-└── 旧目录与迁移残留
 ```
 
 ## 构建
 
-使用 Android Studio 打开 `android_app/` 目录，同步 Gradle 后即可构建。
+使用 Android Studio 打开 `android` 目录，同步 Gradle 后即可构建。
 
 > 需要预编译 `easytier_ffi.so` 和 `easytier_android_jni.so` 放置于 `app/src/main/jniLibs/arm64-v8a/`。
