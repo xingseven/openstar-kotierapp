@@ -4,22 +4,24 @@ import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
 import android.util.Log
+import com.easytier.backend.AndroidAdapter
 import com.easytier.backend.BackendClient
 import com.easytier.backend.BackendResult
-import com.easytier.backend.redactTomlSecrets
+import com.easytier.backend.JsonRpcClient
 import com.easytier.backend.jni.JniBackendClient
+import com.easytier.backend.protocol.PingResult
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import kotlinx.coroutines.*
 
-/** EasyTier 核心服务 —— 封装 JNI 调用 + VPN 管理 + 监控 */
 object EasyTierService {
     private const val TAG = "EasyTierService"
-    private const val VPN_REQUEST_CODE = 10001
     private const val MONITOR_INTERVAL = 3000L
 
     private var initialized = false
     private val backend: BackendClient = JniBackendClient()
+    private val jsonRpcClient: JsonRpcClient = JsonRpcClient(backend)
+    private var adapter: AndroidAdapter? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var monitorJob: Job? = null
 
@@ -28,6 +30,14 @@ object EasyTierService {
             fun ok() = EasyTierResult(true)
             fun fail(msg: String) = EasyTierResult(false, msg)
         }
+    }
+
+    private fun getAdapter(activity: Activity): AndroidAdapter {
+        val existing = adapter
+        if (existing != null) return existing
+        val created = AndroidAdapter(jsonRpcClient, activity.applicationContext)
+        adapter = created
+        return created
     }
 
     fun initialize(): Boolean {
@@ -47,15 +57,15 @@ object EasyTierService {
         }
     }
 
+    suspend fun ping(): PingResult {
+        if (!initialized) return PingResult(ok = false, backendVersion = "uninitialized")
+        return backend.ping()
+    }
+
     suspend fun startNetwork(config: NetworkConfig): EasyTierResult {
         if (!initialized) return EasyTierResult.fail("not initialized")
 
         return try {
-            val toml = config.toToml()
-            val redactedToml = redactTomlSecrets(toml)
-            LogService.info("启动网络实例: ${config.instanceName}", source = TAG)
-            LogService.debug("启动配置:\n$redactedToml", source = TAG)
-
             val result = backend.startNetwork(config)
             if (result.success) {
                 config.isRunning = true
@@ -78,7 +88,6 @@ object EasyTierService {
 
         return try {
             val result = backend.stopNetwork(instanceName)
-
             if (result.success) {
                 LogService.info("网络实例已停止: $instanceName", source = TAG)
                 EasyTierResult.ok()
@@ -106,7 +115,6 @@ object EasyTierService {
 
     suspend fun collectNodeInfos(instanceName: String): List<NodeInfo> {
         if (!initialized) return emptyList()
-
         return try {
             backend.collectNodeInfos(instanceName)
         } catch (e: Exception) {
@@ -117,7 +125,6 @@ object EasyTierService {
 
     suspend fun collectNetworkInfoJson(): String? {
         if (!initialized) return null
-
         return try {
             backend.collectNetworkInfoJson()
         } catch (e: Exception) {
@@ -142,24 +149,19 @@ object EasyTierService {
         monitorJob = null
     }
 
-    /** 请求 VPN 授权（需要在 Activity 中处理 onActivityResult） */
     fun createVpnPrepareIntent(activity: Activity): Intent? =
-        VpnService.prepare(activity)
+        getAdapter(activity).createVpnPrepareIntent()
 
-    /** 启动 VPN 后台服务 */
     fun startVpnService(activity: Activity, instanceName: String, ipv4: String, prefix: Int = 24, routes: List<String> = emptyList()) {
-        val intent = Intent(activity, EasyTierVpnService::class.java).apply {
-            putExtra("instance_name", instanceName)
-            putExtra("ipv4", ipv4)
-            putExtra("prefix", prefix)
-            putStringArrayListExtra("routes", ArrayList(routes))
-        }
-        activity.startService(intent)
+        getAdapter(activity).startVpnService(instanceName, ipv4, prefix, routes)
     }
 
-    /** 停止 VPN */
     fun stopVpnService(activity: Activity) {
-        activity.stopService(Intent(activity, EasyTierVpnService::class.java))
+        val existing = adapter
+        if (existing != null) {
+            existing.stopVpnService()
+        } else {
+            activity.stopService(Intent(activity, EasyTierVpnService::class.java))
+        }
     }
-
 }

@@ -2,29 +2,71 @@
 
 这里放不同前端或平台到统一后端协议的薄适配层说明。
 
+## 分层职责
+
+```
+前端 UI → Adapter（平台适配层）→ JSON-RPC 协议层 → BackendClient（JNI/FFI）→ EasyTier 引擎
+```
+
+- **Adapter**：处理平台特有逻辑（VPN 权限、TUN fd、桌面保活等），对外提供 typed API
+- **JSON-RPC 协议层**（JsonRpcClient）：接收 JSON-RPC 格式的请求字符串，路由到 BackendClient，返回 JSON-RPC 格式的响应。任何前端只要会发 JSON 就能接这套后端。
+- **BackendClient**：JNI/FFI 薄封装，对应底层引擎能力
+
 ## Android Adapter
 
-- 负责把 VpnService 的 TUN 句柄接到后端。
-- 负责权限申请、前台服务、后台保活。
-- 不负责业务协议本身。
-- Android 侧一些可复用的 backend 工具已经提到 `android/app/src/main/java/com/easytier/backend/`，例如 TOML 脱敏、节点 JSON 解析、一键联机码编解码，以及运行实例名/代理 CIDR 的 JSON 解析。
-- Android 侧的 `SettingsRepository` 也开始承担网络配置的 typed 读写，`ServersPage` 通过它回填服务器列表，不再直接改 JSON 数组。
-- Android 侧的 `NetworkConfig` 也开始承担一键联机默认配置工厂，`OneClickPage` 不再直接拼 host/guest 初始字段。
-- Android 侧的 `SettingsRepository` 也统一承担收藏服务器的 typed 持久化和旧默认服务器迁移，`ServersPage` 只消费 `List<ServerEntry>`。
+位置：`android/app/src/main/java/com/easytier/backend/AndroidAdapter.kt`
+
+- 通过 `JsonRpcClient` 走 JSON-RPC 协议与后端通信
+- 封装 VpnService 授权、TUN 文件描述符管理、前台服务
+- 提供 typed Kotlin API：`ping()`、`startNetwork(config)`、`stopNetwork(name)` 等
+- 内置节点监控协程：`startMonitoring(instanceName, onNodes)`
+
+调用示例：
+```kotlin
+val adapter = AndroidAdapter(jsonRpcClient, context)
+
+// 检查后端状态
+val ping = adapter.ping()
+
+// 启动网络
+adapter.startNetwork(config)
+
+// 绑定 TUN
+adapter.vpnAttach("instance-1", tunFd)
+
+// 监控节点
+adapter.startMonitoring("instance-1") { nodes ->
+    // UI 更新
+}
+```
 
 ## Qt Adapter
 
-- 负责桌面端配置读取、窗口交互和运行态展示。
-- 不直接操作核心协议以外的细节。
-- 当前 Qt 端的 adapter 实现先落在 `qt-easy-tier-master/SRC/backend/`，用于把 FFI 运行时封装成薄客户端。
-- 运行态 JSON 解析也已开始下沉到 `qt-easy-tier-master/SRC/backend/RuntimeInfoParser.*`，节点列表和日志事件解释不再直接挂在页面类上。
-- 运行态缓存回写规则也已下沉到 `qt-easy-tier-master/SRC/backend/RuntimeStateStore.*`，启动/停止/轮询后的状态清理和日志增量合并不再由 `QtETNetwork` 直接逐字段操作。
-- `qt-easy-tier-master/SRC/backend/RuntimeService.*` 现在接管了 worker 线程、跨线程调用和同步停机等待；`QtETNetwork` 与 `QtETOneClick` 都不再直接持有 `QThread` / `ETRunWorker`。
-- `qt-easy-tier-master/SRC/backend/OneClickRuntimeParser.*` 现在接管了一键联机页的房主 IP、房客房主地址和联机人数相关 JSON 解释，`QtETOneClick` 不再自己解析运行态 JSON 结构。
-- `qt-easy-tier-master/SRC/backend/OneClickConfigBuilder.*` 现在接管了一键联机页 host/guest TOML 配置拼装，`QtETOneClick` 不再自己拼接运行配置文本。
-- `qt-easy-tier-master/SRC/backend/OneClickConnectionCode.*` 现在接管了一键联机页的联机码生成/解码与 Base32 编解码，`QtETOneClick` 不再自己维护这套编码逻辑。
-- Android 侧对应的共享工具落在 `android/app/src/main/java/com/easytier/backend/OneClickConnectionCode.kt`，与 Qt 保持同样的联机码格式和编码规则。
+位置：`qt-easy-tier-master/SRC/backend/QtAdapter.h/.cpp`
+
+- 通过 `JsonRpcClient` 走 JSON-RPC 协议与后端通信
+- 处理桌面端配置读取、窗口交互、运行态展示
+- 通过 Qt 信号槽机制通知 UI 更新：`networkStarted`、`networkStopped`、`stateUpdated` 等
+- 提供 typed C++ API 和 `callJsonRpc() 原始接口`
+
+调用示例：
+```cpp
+auto adapter = new QtAdapter(backend, this);
+
+// 检查后端状态
+auto ping = adapter.ping();
+
+// 启动网络
+adapter.startNetwork("inst-1", tomlConfig);
+
+// 监听状态变化
+connect(adapter, &QtAdapter::stateUpdated, this, [](const QString &name) {
+    // UI 更新
+});
+```
 
 ## 约束
 
-适配层的代码应尽量薄，后续新增前端时优先复用协议，不要复制一份业务逻辑。
+- 适配层代码应尽量薄，只处理平台差异
+- 后续新增前端时优先复用协议，不要复制一份业务逻辑
+- 所有新能力先定义到 `protocol/easytier.rpc.json`，再在各端 Adapter 中实现
