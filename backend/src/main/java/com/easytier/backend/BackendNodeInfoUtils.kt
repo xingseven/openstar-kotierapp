@@ -110,6 +110,35 @@ fun collectRunningInstanceNames(jsonStr: String): Set<String> {
     }
 }
 
+fun collectOneClickHostVirtualIpFromJson(jsonStr: String, instanceName: String): String {
+    return try {
+        val map = JSONObject(jsonStr).optJSONObject("map") ?: return ""
+        val inst = map.optJSONObject(instanceName) ?: return ""
+        val routesArr = inst.optJSONArray("routes") ?: return ""
+
+        for (i in 0 until routesArr.length()) {
+            val route = routesArr.optJSONObject(i) ?: continue
+            val featureFlag = route.optJSONObject("feature_flag")
+            val isPublicServer = featureFlag?.optBoolean("is_public_server", false) ?: false
+            if (isPublicServer) {
+                continue
+            }
+            if (route.optString("hostname", "") != "host") {
+                continue
+            }
+
+            val virtualIp = parseIpv4InetToString(route.optJSONObject("ipv4_addr"))
+            if (virtualIp.isNotEmpty()) {
+                return virtualIp
+            }
+        }
+
+        ""
+    } catch (_: Exception) {
+        ""
+    }
+}
+
 fun collectProxyCidrsFromJson(jsonStr: String, instanceName: String): List<String> {
     return try {
         val map = JSONObject(jsonStr).optJSONObject("map") ?: return emptyList()

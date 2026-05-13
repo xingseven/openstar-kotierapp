@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easytier.backend.collectOneClickHostVirtualIpFromJson
 import com.easytier.backend.collectProxyCidrsFromJson
 import com.easytier.backend.decodeConnectionCode
 import com.easytier.backend.encodeConnectionCode
@@ -38,6 +39,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private data class OneClickVpnStartData(
+    val assignedIp: String,
+    val routes: List<String>,
+    val hostVirtualIp: String = "",
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +63,7 @@ fun OneClickPage() {
     var statusMessage by rememberSaveable { mutableStateOf("") }
     var statusIsError by rememberSaveable { mutableStateOf(false) }
     var runtimeReady by remember { mutableStateOf(false) }
+    var guestHostVirtualIp by remember { mutableStateOf("") }
     var pendingStartIsHost by remember { mutableStateOf<Boolean?>(null) }
     var pendingStartIp by remember { mutableStateOf("") }
     var pendingStartRoutes by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -80,32 +88,48 @@ fun OneClickPage() {
         repo.saveOneClickGuestSession(session)
     }
 
-    suspend fun awaitVpnStartData(config: NetworkConfig): Pair<String, List<String>> {
+    suspend fun awaitVpnStartData(config: NetworkConfig): OneClickVpnStartData {
+        val requiresHostRoute = config.hostname == "guest"
         var assignedIp = if (!config.dhcp && config.ipv4.isNotBlank()) {
             NetworkConfig.vpnIpv4Address(config.ipv4)
         } else {
             ""
         }
         var routes = emptyList<String>()
+        var hostVirtualIp = ""
 
-        repeat(if (assignedIp.isEmpty()) 10 else 3) {
+        repeat(if (requiresHostRoute || assignedIp.isEmpty()) 30 else 5) {
             val nodes = EasyTierService.collectNodeInfos(config.instanceName)
             val localNode = nodes.find { it.isLocal }
             if (localNode != null && localNode.virtualIp.isNotEmpty()) {
                 assignedIp = localNode.virtualIp
             }
 
-            routes = EasyTierService.collectNetworkInfoJson()
+            val networkInfoJson = EasyTierService.collectNetworkInfoJson()
+            routes = networkInfoJson
                 ?.let { collectProxyCidrsFromJson(it, config.instanceName) }
                 .orEmpty()
+            if (requiresHostRoute) {
+                hostVirtualIp = networkInfoJson
+                    ?.let { collectOneClickHostVirtualIpFromJson(it, config.instanceName) }
+                    .orEmpty()
+            }
 
-            if (assignedIp.isNotEmpty()) {
-                return assignedIp to routes
+            if (assignedIp.isNotEmpty() && (!requiresHostRoute || hostVirtualIp.isNotEmpty())) {
+                return OneClickVpnStartData(
+                    assignedIp = assignedIp,
+                    routes = routes,
+                    hostVirtualIp = hostVirtualIp,
+                )
             }
             delay(300)
         }
 
-        return assignedIp.ifEmpty { "10.144.144.1" } to routes
+        return OneClickVpnStartData(
+            assignedIp = assignedIp,
+            routes = routes,
+            hostVirtualIp = hostVirtualIp,
+        )
     }
 
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
@@ -114,20 +138,37 @@ fun OneClickPage() {
         val isHost = pendingStartIsHost ?: return@rememberLauncherForActivityResult
         val snapshot = if (isHost) hostSession else guestSession
         val cfg = snapshot?.toNetworkConfig() ?: return@rememberLauncherForActivityResult
-        val assignedIp = pendingStartIp.ifEmpty {
-            NetworkConfig.vpnIpv4Address(cfg.ipv4).ifEmpty { "10.144.144.1" }
-        }
+        val assignedIp = pendingStartIp.ifEmpty { NetworkConfig.vpnIpv4Address(cfg.ipv4) }
         val routes = pendingStartRoutes
         pendingStartIsHost = null
         pendingStartIp = ""
         pendingStartRoutes = emptyList()
+
+        if (assignedIp.isBlank()) {
+            scope.launch {
+                EasyTierService.stopNetwork(cfg.instanceName)
+                if (isHost) {
+                    saveHostSession(null)
+                } else {
+                    saveGuestSession(null)
+                    guestHostVirtualIp = ""
+                }
+                setStatus("未获取到真实虚拟 IP，已取消启动", true)
+                setLoading(false)
+            }
+            return@rememberLauncherForActivityResult
+        }
 
         if (result.resultCode == Activity.RESULT_OK) {
             scope.launch {
                 EasyTierService.startVpnService(context, cfg.instanceName, assignedIp, 24, routes)
                 setLoading(false)
                 setStatus(
-                    if (isHost) "网络已启动，分享下方编码给好友" else "已成功加入网络 ${cfg.networkName}",
+                    if (isHost) {
+                        "网络已启动，分享下方编码给好友"
+                    } else {
+                        "已成功加入网络 ${cfg.networkName}，房主 IP: $guestHostVirtualIp"
+                    },
                     false
                 )
             }
@@ -138,6 +179,7 @@ fun OneClickPage() {
                     saveHostSession(null)
                 } else {
                     saveGuestSession(null)
+                    guestHostVirtualIp = ""
                 }
                 setStatus("VPN 授权被拒绝", true); setLoading(false)
             }
@@ -145,6 +187,24 @@ fun OneClickPage() {
     }
 
     fun requestVpnAndStart(isHost: Boolean, config: NetworkConfig, assignedIp: String, routes: List<String>) {
+        if (assignedIp.isBlank()) {
+            scope.launch {
+                EasyTierService.stopNetwork(config.instanceName)
+                if (isHost) {
+                    saveHostSession(null)
+                } else {
+                    saveGuestSession(null)
+                    guestHostVirtualIp = ""
+                }
+                setLoading(false)
+                setStatus(
+                    if (isHost) "启动失败：未获取到真实虚拟 IP" else "加入失败：未获取到真实虚拟 IP",
+                    true
+                )
+            }
+            return
+        }
+
         pendingStartIsHost = isHost
         pendingStartIp = assignedIp
         pendingStartRoutes = routes
@@ -156,7 +216,11 @@ fun OneClickPage() {
             EasyTierService.startVpnService(context, config.instanceName, assignedIp, 24, routes)
             setLoading(false)
             setStatus(
-                if (isHost) "网络已启动，分享下方编码给好友" else "已成功加入网络 ${config.networkName}",
+                if (isHost) {
+                    "网络已启动，分享下方编码给好友"
+                } else {
+                    "已成功加入网络 ${config.networkName}，房主 IP: $guestHostVirtualIp"
+                },
                 false
             )
         }
@@ -186,6 +250,8 @@ fun OneClickPage() {
             return@LaunchedEffect
         }
 
+        val networkInfoJson = EasyTierService.collectNetworkInfoJson()
+
         suspend fun syncSession(
             session: OneClickSessionSnapshot?,
             save: (OneClickSessionSnapshot?) -> Unit,
@@ -203,6 +269,12 @@ fun OneClickPage() {
                 ?.virtualIp
                 .orEmpty()
 
+            if (session.hostname == "guest") {
+                guestHostVirtualIp = networkInfoJson
+                    ?.let { collectOneClickHostVirtualIpFromJson(it, session.instanceName) }
+                    .orEmpty()
+            }
+
             if (virtualIp.isNotBlank() && virtualIp != session.virtualIp) {
                 save(session.copy(virtualIp = virtualIp))
             }
@@ -210,6 +282,10 @@ fun OneClickPage() {
 
         syncSession(hostSession, ::saveHostSession)
         syncSession(guestSession, ::saveGuestSession)
+
+        if (!guestRunning) {
+            guestHostVirtualIp = ""
+        }
     }
 
     Scaffold(
@@ -272,18 +348,26 @@ fun OneClickPage() {
                             val encoded = encodeConnectionCode(netId, password)
                             saveHostSession(OneClickSessionSnapshot.fromConfig(config, generatedCode = encoded))
 
-                            val (assignedIp, routes) = awaitVpnStartData(config)
-                            if (assignedIp.isNotBlank()) {
+                            val startData = awaitVpnStartData(config)
+                            if (startData.assignedIp.isBlank()) {
+                                EasyTierService.stopNetwork(config.instanceName)
+                                saveHostSession(null)
+                                setLoading(false)
+                                setStatus("启动失败：未获取到真实虚拟 IP", true)
+                                return@launch
+                            }
+
+                            if (startData.assignedIp.isNotBlank()) {
                                 saveHostSession(
                                     OneClickSessionSnapshot.fromConfig(
                                         config,
                                         generatedCode = encoded,
-                                        virtualIp = assignedIp,
+                                        virtualIp = startData.assignedIp,
                                     )
                                 )
                             }
 
-                            requestVpnAndStart(true, config, assignedIp, routes)
+                            requestVpnAndStart(true, config, startData.assignedIp, startData.routes)
                         }
                     },
                     onStop = {
@@ -313,6 +397,7 @@ fun OneClickPage() {
                     isLoading = isLoading,
                     hostConfig = guestConfig,
                     virtualIp = guestSession?.virtualIp.orEmpty(),
+                    hostVirtualIp = guestHostVirtualIp,
                     onJoin = {
                         scope.launch {
                             if (otherRunningInstances.isNotEmpty()) {
@@ -328,6 +413,7 @@ fun OneClickPage() {
                             if (code.isBlank()) {
                                 setStatus("请输入联机编码", true); return@launch
                             }
+                            guestHostVirtualIp = ""
                             setLoading(true); setStatus("", false)
                             try {
                                 val (netId, password) = decodeConnectionCode(code)
@@ -341,17 +427,33 @@ fun OneClickPage() {
                                 }
                                 saveGuestSession(OneClickSessionSnapshot.fromConfig(config))
 
-                                val (assignedIp, routes) = awaitVpnStartData(config)
-                                if (assignedIp.isNotBlank()) {
+                                val startData = awaitVpnStartData(config)
+                                if (startData.assignedIp.isBlank()) {
+                                    EasyTierService.stopNetwork(config.instanceName)
+                                    saveGuestSession(null)
+                                    setLoading(false)
+                                    setStatus("加入失败：未获取到真实虚拟 IP", true)
+                                    return@launch
+                                }
+                                if (startData.hostVirtualIp.isBlank()) {
+                                    EasyTierService.stopNetwork(config.instanceName)
+                                    saveGuestSession(null)
+                                    setLoading(false)
+                                    setStatus("加入失败：已获取本机虚拟 IP，但未发现房主节点", true)
+                                    return@launch
+                                }
+
+                                guestHostVirtualIp = startData.hostVirtualIp
+                                if (startData.assignedIp.isNotBlank()) {
                                     saveGuestSession(
                                         OneClickSessionSnapshot.fromConfig(
                                             config,
-                                            virtualIp = assignedIp,
+                                            virtualIp = startData.assignedIp,
                                         )
                                     )
                                 }
 
-                                requestVpnAndStart(false, config, assignedIp, routes)
+                                requestVpnAndStart(false, config, startData.assignedIp, startData.routes)
                             } catch (e: Exception) {
                                 android.util.Log.e("OneClick", "join failed", e)
                                 setLoading(false); setStatus("编码解析失败: ${e.message}", true)
@@ -364,6 +466,7 @@ fun OneClickPage() {
                             guestConfig?.let { EasyTierService.stopNetwork(it.instanceName) }
                             EasyTierService.stopVpnService(context)
                             saveGuestSession(null)
+                            guestHostVirtualIp = ""
                             setLoading(false)
                             setStatus("网络已停止", false)
                         }
@@ -483,6 +586,7 @@ private fun GuestMode(
     guestCode: String, onGuestCodeChange: (String) -> Unit,
     isRunning: Boolean, isLoading: Boolean, hostConfig: NetworkConfig?,
     virtualIp: String,
+    hostVirtualIp: String,
     onJoin: () -> Unit, onLeave: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -525,6 +629,20 @@ private fun GuestMode(
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (hostVirtualIp.isNotBlank()) {
+                        Text(
+                            "房主虚拟 IP: $hostVirtualIp",
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text(
+                            "房主虚拟 IP: 正在发现...",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
