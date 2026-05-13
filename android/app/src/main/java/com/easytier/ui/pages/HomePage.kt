@@ -110,7 +110,7 @@ fun HomePage() {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.background)
             )
             Box(
                 modifier = Modifier
