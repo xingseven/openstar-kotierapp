@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.dp
@@ -71,10 +72,12 @@ fun HomePage() {
                     ) {
                         navItems.forEachIndexed { index, item ->
                             val selected = selectedIndex == index
-                            val navTint = if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                            val darkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+                            val navTint = when {
+                                darkBackground && selected -> Color.White
+                                darkBackground -> Color.White.copy(alpha = 0.76f)
+                                selected -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                             Box(
                                 modifier = Modifier
