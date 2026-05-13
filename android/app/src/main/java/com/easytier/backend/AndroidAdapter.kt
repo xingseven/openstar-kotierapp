@@ -106,8 +106,17 @@ class AndroidAdapter(
         context.startService(intent)
     }
 
-    fun stopVpnService() {
-        context.stopService(Intent(context, EasyTierVpnService::class.java))
+    fun stopVpnService(): Boolean {
+        val intent = Intent(context, EasyTierVpnService::class.java).apply {
+            action = EasyTierVpnService.ACTION_STOP
+        }
+        return try {
+            context.startService(intent)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to deliver explicit VPN stop action, falling back to stopService", e)
+            context.stopService(Intent(context, EasyTierVpnService::class.java))
+        }
     }
 
     fun startMonitoring(instanceName: String, onNodes: (List<NodeInfo>) -> Unit) {

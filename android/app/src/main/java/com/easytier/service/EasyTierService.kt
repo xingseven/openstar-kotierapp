@@ -132,6 +132,7 @@ object EasyTierService {
                 if (shouldStopVpn) {
                     val context = appContext
                     if (context != null) {
+                        LogService.info("准备停止 VPN 服务: $instanceName", source = TAG)
                         stopVpnServiceInternal(context, instanceName, force = true)
                     } else {
                         Log.w(TAG, "unable to stop VPN service for $instanceName: app context unavailable")
@@ -236,7 +237,6 @@ object EasyTierService {
             override fun onLost(network: Network) {
                 val activeInstanceName = _runtimeState.value.activeVpnInstanceName ?: return
                 LogService.warn("检测到系统 VPN 网络断开: $activeInstanceName", source = TAG)
-                notifyVpnStopped(activeInstanceName)
                 scope.launch {
                     stopNetwork(activeInstanceName)
                     refreshRuntimeState()
@@ -346,10 +346,14 @@ object EasyTierService {
             }
         }
         val existing = adapter
-        if (existing != null) {
+        val requested = if (existing != null) {
             existing.stopVpnService()
         } else {
             context.stopService(Intent(context, EasyTierVpnService::class.java))
+        }
+        LogService.info("已发送停止 VPN 服务请求: instance=${instanceName ?: "active"}, requested=$requested, force=$force", source = TAG)
+        if (!requested) {
+            LogService.warn("停止 VPN 服务请求未命中运行中的服务", source = TAG)
         }
     }
 

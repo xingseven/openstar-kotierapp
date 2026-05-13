@@ -15,6 +15,7 @@ class EasyTierVpnService : VpnService() {
 
     companion object {
         private const val TAG = "EasyTierVpn"
+        const val ACTION_STOP = "com.easytier.service.action.STOP_VPN"
         private val DISCOVERY_ROUTES = listOf(
             "224.0.0.251/32",
             "224.0.0.252/32",
@@ -24,6 +25,14 @@ class EasyTierVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            Log.i(TAG, "received explicit stop request")
+            LogService.info("收到停止 VPN 服务请求", source = TAG)
+            job?.cancel()
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
         val instanceName = intent?.getStringExtra("instance_name") ?: run {
             Log.w(TAG, "missing instance_name"); stopSelf(startId); return START_NOT_STICKY
         }
