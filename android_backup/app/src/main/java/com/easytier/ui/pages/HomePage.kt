@@ -61,9 +61,9 @@ fun HomePage() {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    color = Color.Transparent,
                     tonalElevation = 0.dp,
-                    shadowElevation = 12.dp
+                    shadowElevation = 0.dp
                 ) {
                     Row(
                         modifier = Modifier
