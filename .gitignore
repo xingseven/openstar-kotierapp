@@ -1,13 +1,11 @@
 # Android
-android_app/.gradle/
-android_app/build/
-android_app/app/build/
-android_app/local.properties
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# IDE
 *.iml
 .idea/
-
-# Qt App
-qt_app/
 
 # OS
 .DS_Store
