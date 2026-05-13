@@ -77,6 +77,8 @@ object EasyTierService {
             if (result.success) {
                 Log.i(TAG, "Backend initialized")
                 scope.launch {
+                    // 清理上次运行残留的网络实例
+                    backend.stopAllNetworks()
                     refreshRuntimeState()
                 }
             } else {

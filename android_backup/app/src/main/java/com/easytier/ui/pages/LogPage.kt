@@ -5,27 +5,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
-import com.easytier.ui.components.CompactTopBar
 import androidx.compose.runtime.*
+import com.easytier.ui.components.AppIcon
+import com.easytier.ui.components.AppIcons
+import com.easytier.ui.components.CompactTopBar
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.height
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.data.LogLevel
 import com.easytier.service.LogService
-import com.easytier.ui.components.AppIcon
-import com.easytier.ui.components.AppIcons
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogPage() {
+fun LogPage(onBack: (() -> Unit)? = null) {
     var logs by remember { mutableStateOf(LogService.logs) }
     var autoScroll by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     // 定时刷新日志
     LaunchedEffect(Unit) {
@@ -40,7 +37,16 @@ fun LogPage() {
 
     Scaffold(
         topBar = {
-            CompactTopBar(title = "运行日志") {
+            CompactTopBar(
+                title = "运行日志",
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            AppIcon(AppIcons.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                }
+            ) {
                     TextButton(onClick = { autoScroll = !autoScroll }) {
                         Text(if (autoScroll) "自动滚动: 开" else "自动滚动: 关")
                     }

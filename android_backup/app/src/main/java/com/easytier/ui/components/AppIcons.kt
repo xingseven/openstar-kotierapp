@@ -1,6 +1,7 @@
 package com.easytier.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 object AppIcons {
     val Add = Icons.Rounded.AddCircle
+    val ArrowBack = Icons.AutoMirrored.Rounded.ArrowBack
     val CheckCircle = Icons.Rounded.CheckCircle
     val ChevronRight = Icons.Rounded.ChevronRight
     val Cloud = Icons.Rounded.Cloud

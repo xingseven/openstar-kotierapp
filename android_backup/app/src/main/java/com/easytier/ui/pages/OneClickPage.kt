@@ -289,8 +289,8 @@ fun OneClickPage() {
                     onStop = {
                         scope.launch {
                             setLoading(true)
-                            EasyTierService.stopVpnService(context)
                             hostConfig?.let { EasyTierService.stopNetwork(it.instanceName) }
+                            EasyTierService.stopVpnService(context)
                             saveHostSession(null)
                             setLoading(false)
                             setStatus("网络已停止", false)
@@ -361,8 +361,8 @@ fun OneClickPage() {
                     onLeave = {
                         scope.launch {
                             setLoading(true)
-                            EasyTierService.stopVpnService(context)
                             guestConfig?.let { EasyTierService.stopNetwork(it.instanceName) }
+                            EasyTierService.stopVpnService(context)
                             saveGuestSession(null)
                             setLoading(false)
                             setStatus("网络已停止", false)

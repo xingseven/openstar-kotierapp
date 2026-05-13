@@ -1,5 +1,6 @@
 ﻿package com.easytier.ui.pages
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -21,7 +22,7 @@ import com.easytier.ui.components.CompactTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsPage() {
+fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     val repo = LocalSettingsRepository.current
     var followSystem by remember { mutableStateOf(repo.followSystemTheme) }
     var darkMode by remember { mutableStateOf(repo.darkMode) }
@@ -128,7 +129,9 @@ fun SettingsPage() {
                 ListItem(
                     headlineContent = { Text("查看运行日志", fontSize = 13.sp) },
                     trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToLog?.invoke() }
                 )
             }
 

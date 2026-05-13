@@ -3,11 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val appVersionCode = 4049
-val appVersionName = "4.2.29"
+val appVersionCode = 4050
+val appVersionName = "4.2.30"
 
 base {
-    archivesName.set("vetier-split-v${appVersionName}-${appVersionCode}")
+    archivesName.set("kotier-v${appVersionName}-${appVersionCode}")
 }
 
 android {

@@ -46,6 +46,7 @@ private val navItems = listOf(
 @Composable
 fun HomePage() {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var showLogPage by remember { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
 
     Scaffold(
@@ -61,9 +62,9 @@ fun HomePage() {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.Transparent,
+                    color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp,
-                    shadowElevation = 0.dp
+                    shadowElevation = 12.dp
                 ) {
                     Row(
                         modifier = Modifier
@@ -140,15 +141,7 @@ fun HomePage() {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFFFBFDFF),
-                                Color(0xFFF3F7FD),
-                                Color(0xFFEAF1FB),
-                            )
-                        )
-                    )
+                    .background(Color.White)
             )
             Box(
                 modifier = Modifier
@@ -165,12 +158,16 @@ fun HomePage() {
                     )
             )
             Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                stateHolder.SaveableStateProvider(selectedIndex) {
-                    when (selectedIndex) {
-                        0 -> NetworkConfigPage()
-                        1 -> OneClickPage()
-                        2 -> ServersPage()
-                        3 -> SettingsPage()
+                if (showLogPage) {
+                    LogPage(onBack = { showLogPage = false })
+                } else {
+                    stateHolder.SaveableStateProvider(selectedIndex) {
+                        when (selectedIndex) {
+                            0 -> NetworkConfigPage()
+                            1 -> OneClickPage()
+                            2 -> ServersPage()
+                            3 -> SettingsPage(onNavigateToLog = { showLogPage = true })
+                        }
                     }
                 }
             }

@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 
 private val LightPrimary = Color(0xFF1868F5)
 private val LightSecondary = Color(0xFF7FAEFF)
-private val LightBackground = Color(0xFFF2F6FC)
+private val LightBackground = Color.White
 private val LightSurface = Color(0xF2FFFFFF)
 private val LightSurfaceVariant = Color(0xE6F0FF)
 private val LightText = Color(0xFF16314F)

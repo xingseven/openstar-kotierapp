@@ -355,13 +355,13 @@ fun NetworkConfigPage() {
                             Text("基本设置", fontWeight = FontWeight.SemiBold)
                         }
                         Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(value = labelText, onValueChange = { labelText = it }, label = { Text("配置标签") }, placeholder = { Text("例如: 家庭网络") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = labelText, onValueChange = { labelText = it; saveCurrentConfig() }, label = { Text("配置标签") }, placeholder = { Text("例如: 家庭网络") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = hostnameText, onValueChange = { hostnameText = it }, label = { Text("本机主机名") }, placeholder = { Text("例如: my-phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = hostnameText, onValueChange = { hostnameText = it; saveCurrentConfig() }, label = { Text("本机主机名") }, placeholder = { Text("例如: my-phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it; saveCurrentConfig() }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it; saveCurrentConfig() }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
 
                         val dhcpOn = configs.getOrNull(selectedIndex)?.dhcp ?: true
@@ -489,112 +489,6 @@ fun NetworkConfigPage() {
                     )
                 }
 
-                // 高级设置标题
-                Surface(
-                    onClick = { showAdvanced = !showAdvanced },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AppIcon(AppIcons.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("高级设置", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        AppIcon(
-                            AppIcons.ExpandMore,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp).let { mod ->
-                            val rotation by animateFloatAsState(
-                                targetValue = if (showAdvanced) 180f else 0f,
-                                label = "expand"
-                            )
-                            mod.rotate(rotation)
-                        }
-                        )
-                    }
-                }
-
-                // 高级设置内容
-                AnimatedVisibility(visible = showAdvanced) {
-                    if (selectedIndex in configs.indices) {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
-                                SectionLabel("协议与传输")
-                                CustomSwitch("KCP 代理", "启用 KCP 代理入站", configs[selectedIndex].enableKcpProxy) { updateSelectedConfig { config -> config.enableKcpProxy = it } }
-                                CustomSwitch("禁用 KCP 入站", configs[selectedIndex].disableKcpInput) { updateSelectedConfig { config -> config.disableKcpInput = it } }
-                                CustomSwitch("QUIC 代理", "启用 QUIC 代理入站", configs[selectedIndex].enableQuicProxy) { updateSelectedConfig { config -> config.enableQuicProxy = it } }
-                                CustomSwitch("禁用 QUIC 入站", configs[selectedIndex].disableQuicInput) { updateSelectedConfig { config -> config.disableQuicInput = it } }
-                                CustomSwitch("禁用中继 KCP", configs[selectedIndex].disableRelayKcp) { updateSelectedConfig { config -> config.disableRelayKcp = it } }
-                                CustomSwitch("禁用中继 QUIC", configs[selectedIndex].disableRelayQuic) { updateSelectedConfig { config -> config.disableRelayQuic = it } }
-                                CustomSwitch("允许中继外部网络 KCP", configs[selectedIndex].enableRelayForeignNetworkKcp) { updateSelectedConfig { config -> config.enableRelayForeignNetworkKcp = it } }
-                                CustomSwitch("允许中继外部网络 QUIC", configs[selectedIndex].enableRelayForeignNetworkQuic) { updateSelectedConfig { config -> config.enableRelayForeignNetworkQuic = it } }
-
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-                                SectionLabel("网络与连接")
-                                CustomSwitch("禁用 UDP 打孔", configs[selectedIndex].disableUdpHolePunching) { updateSelectedConfig { config -> config.disableUdpHolePunching = it } }
-                                CustomSwitch("禁用 TCP 打孔", configs[selectedIndex].disableTcpHolePunching) { updateSelectedConfig { config -> config.disableTcpHolePunching = it } }
-                                CustomSwitch("禁用 UPnP/NAT-PMP", configs[selectedIndex].disableUpnp) { updateSelectedConfig { config -> config.disableUpnp = it } }
-                                CustomSwitch("禁用对称 NAT 打孔", configs[selectedIndex].disableSymHolePunching) { updateSelectedConfig { config -> config.disableSymHolePunching = it } }
-                                CustomSwitch("禁用 P2P", configs[selectedIndex].disableP2p) { updateSelectedConfig { config -> config.disableP2p = it } }
-                                CustomSwitch("需要 P2P", configs[selectedIndex].needP2p) { updateSelectedConfig { config -> config.needP2p = it } }
-                                CustomSwitch("懒 P2P", configs[selectedIndex].lazyP2p) { updateSelectedConfig { config -> config.lazyP2p = it } }
-                                CustomSwitch("仅 P2P", configs[selectedIndex].p2pOnly) { updateSelectedConfig { config -> config.p2pOnly = it } }
-                                CustomSwitch("禁用 IPv6", configs[selectedIndex].disableIpv6) { updateSelectedConfig { config -> config.disableIpv6 = it } }
-                                CustomSwitch("延迟优先", "优先选择延迟最低的路径", configs[selectedIndex].latencyFirst) { updateSelectedConfig { config -> config.latencyFirst = it } }
-
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-                                SectionLabel("高级选项")
-                                CustomSwitch("加密", "启用网络加密", configs[selectedIndex].enableEncryption) { updateSelectedConfig { config -> config.enableEncryption = it } }
-                                CustomSwitch("出口节点", "将本机作为网络出口", configs[selectedIndex].enableExitNode) { updateSelectedConfig { config -> config.enableExitNode = it } }
-                                CustomSwitch("系统转发", "启用系统 IP 转发", configs[selectedIndex].systemForwarding) { updateSelectedConfig { config -> config.systemForwarding = it } }
-                                CustomSwitch("多线程", configs[selectedIndex].multiThread) { updateSelectedConfig { config -> config.multiThread = it } }
-                                CustomSwitch("Smoltcp 协议栈", configs[selectedIndex].useSmoltcp) { updateSelectedConfig { config -> config.useSmoltcp = it } }
-                                CustomSwitch("绑定设备", configs[selectedIndex].bindDevice) { updateSelectedConfig { config -> config.bindDevice = it } }
-                                CustomSwitch("私有模式", "仅允许白名单节点加入", configs[selectedIndex].privateMode) { updateSelectedConfig { config -> config.privateMode = it } }
-                                CustomSwitch("中转所有 RPC", configs[selectedIndex].relayAllPeerRpc) { updateSelectedConfig { config -> config.relayAllPeerRpc = it } }
-                                CustomSwitch("接受 DNS", configs[selectedIndex].acceptDns) { updateSelectedConfig { config -> config.acceptDns = it } }
-                                CustomSwitch("转发 UDP 广播", "改善依赖局域网发现的软件兼容性", configs[selectedIndex].enableUdpBroadcastRelay) { updateSelectedConfig { config -> config.enableUdpBroadcastRelay = it } }
-                                CustomSwitch("禁用 TUN", configs[selectedIndex].noTun) { updateSelectedConfig { config -> config.noTun = it } }
-
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-                                SectionLabel("设备与协议")
-                                OutlinedTextField(value = devNameText, onValueChange = { devNameText = it; saveCurrentConfig() }, label = { Text("TUN 设备名") }, placeholder = { Text("留空使用默认") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = mtuText, onValueChange = { mtuText = it; saveCurrentConfig() }, label = { Text("MTU") }, placeholder = { Text("1-1380，留空不指定") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = defaultProtocolText, onValueChange = { defaultProtocolText = it; saveCurrentConfig() }, label = { Text("默认协议") }, placeholder = { Text("udp, tcp, wg, ws, wss") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = encryptionAlgorithmText, onValueChange = { encryptionAlgorithmText = it; saveCurrentConfig() }, label = { Text("加密算法") }, placeholder = { Text("aes-gcm, xor, chacha20 ...") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-                                SectionLabel("路由与白名单")
-                                OutlinedTextField(value = listenAddressesText, onValueChange = { listenAddressesText = it; saveCurrentConfig() }, label = { Text("监听地址（逗号分隔）") }, placeholder = { Text("tcp://0.0.0.0:11010, udp://0.0.0.0:11010") }, maxLines = 2, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = proxyNetworksText, onValueChange = { proxyNetworksText = it; saveCurrentConfig() }, label = { Text("代理网络 CIDR（逗号分隔）") }, placeholder = { Text("192.168.1.0/24") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = customRoutesText, onValueChange = { customRoutesText = it; saveCurrentConfig() }, label = { Text("自定义路由（逗号分隔）") }, placeholder = { Text("192.168.1.0/24") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                OutlinedTextField(value = exitNodesText, onValueChange = { exitNodesText = it; saveCurrentConfig() }, label = { Text("出口节点（逗号分隔）") }, placeholder = { Text("peer-id") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-                                Spacer(Modifier.height(5.dp))
-                                CustomSwitch("启用外部网络白名单", configs[selectedIndex].foreignNetworkWhitelistEnabled) { updateSelectedConfig { config -> config.foreignNetworkWhitelistEnabled = it } }
-                                if (configs[selectedIndex].foreignNetworkWhitelistEnabled) {
-                                    Spacer(Modifier.height(5.dp))
-                                    OutlinedTextField(value = whitelistText, onValueChange = { whitelistText = it; saveCurrentConfig() }, label = { Text("外部网络白名单（逗号分隔）") }, placeholder = { Text("network1, network2") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Spacer(Modifier.height(8.dp))
 
                 // 操作按钮
@@ -625,10 +519,10 @@ fun NetworkConfigPage() {
 
                             isLoading = true
                             if (isRunning) {
+                                val result = EasyTierService.stopNetwork(cfg.instanceName)
                                 if (runtimeState.activeVpnInstanceName == cfg.instanceName) {
                                     EasyTierService.stopVpnService(context, cfg.instanceName)
                                 }
-                                val result = EasyTierService.stopNetwork(cfg.instanceName)
                                 if (result.success) {
                                     isRunning = false
                                     cfg.isRunning = false
