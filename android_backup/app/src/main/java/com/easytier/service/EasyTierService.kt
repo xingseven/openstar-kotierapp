@@ -283,7 +283,11 @@ object EasyTierService {
         getAdapter(activity).startVpnService(instanceName, ipv4, prefix, routes)
     }
 
-    fun stopVpnService(activity: Activity) {
+    fun stopVpnService(activity: Activity, instanceName: String? = null) {
+        if (instanceName != null && _runtimeState.value.activeVpnInstanceName != instanceName) {
+            Log.d(TAG, "skip stopVpnService: $instanceName is not the active VPN instance")
+            return
+        }
         val existing = adapter
         if (existing != null) {
             existing.stopVpnService()
@@ -291,4 +295,11 @@ object EasyTierService {
             activity.stopService(Intent(activity, EasyTierVpnService::class.java))
         }
     }
+
+    fun isVpnInUseByOther(instanceName: String): Boolean {
+        val active = _runtimeState.value.activeVpnInstanceName
+        return active != null && active != instanceName
+    }
+
+    fun getActiveVpnInstanceName(): String? = _runtimeState.value.activeVpnInstanceName
 }

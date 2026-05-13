@@ -46,6 +46,17 @@
 | 3.1 adapters/README.md 更新 | ✅ | 补充适配层对接指南和调用示例 |
 | 3.2 EasyTierService 接入 | ✅ | Android 端使用 JsonRpcClient + AndroidAdapter 新架构 |
 
+### 第 4 阶段：多网络实例同时运行 ✅
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| 4.1 EasyTierService 增加实例感知的 stopVpnService | ✅ | 新增带 instanceName 参数的 stopVpnService，仅停止匹配的 VPN 实例 |
+| 4.2 EasyTierService 增加 VPN 冲突检测 | ✅ | 新增 isVpnInUseByOther / getActiveVpnInstanceName 方法 |
+| 4.3 配置标签运行状态指示器 | ✅ | 每个配置标签前显示绿色/灰色圆点表示运行状态 |
+| 4.4 UI 停止按钮逻辑修复 | ✅ | 修复启动/停止按钮，支持独立停止每个网络实例 |
+| 4.5 VPN 占用冲突提示对话框 | ✅ | 当启动需要 VPN 的实例而 VPN 已被占用时，弹窗提示用户释放 |
+| 4.6 无 TUN 模式共存 | ✅ | 一个实例使用 VPN，多个实例以 noTun 模式同时运行 |
+
 ## 新增前端的步骤
 
 1. 在 `protocol/easytier.rpc.json` 中定义新能力（如果需要）

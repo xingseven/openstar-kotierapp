@@ -1,4 +1,4 @@
-﻿package com.easytier.ui.pages
+package com.easytier.ui.pages
 
 import android.app.Activity
 import android.content.ClipData
@@ -12,9 +12,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -67,6 +80,7 @@ fun NetworkConfigPage() {
     var showAdvanced by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
+    var showVpnConflictDialog by remember { mutableStateOf(false) }
 
     // 触发 Compose 重绘 —— 每次修改配置后调用
     fun forceRecompose() {
@@ -300,10 +314,24 @@ fun NetworkConfigPage() {
                 ) {
                     items(configs.withIndex().toList()) { (index, cfg) ->
                         val label = cfg.networkLabel.ifEmpty { "配置 ${index + 1}" }
+                        val isChipRunning = cfg.isRunning
                         Box(modifier = Modifier.padding(end = 8.dp)) {
                             FilterChip(
                                 selected = index == selectedIndex,
-                                label = { Text(label) },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(
+                                                    if (isChipRunning) Color(0xFF4CAF50) else Color(0xFFBDBDBD),
+                                                    CircleShape
+                                                )
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(label)
+                                    }
+                                },
                                 onClick = {
                                     saveCurrentConfig()
                                     selectedIndex = index
@@ -437,6 +465,30 @@ fun NetworkConfigPage() {
                     }
                 }
 
+                // VPN 占用冲突对话框
+                if (showVpnConflictDialog && selectedIndex in configs.indices) {
+                    val otherInstance = EasyTierService.getActiveVpnInstanceName()
+                    AlertDialog(
+                        onDismissRequest = { showVpnConflictDialog = false },
+                        title = { Text("VPN 已被占用") },
+                        text = {
+                            Text("实例「${otherInstance ?: "未知"}」正在使用 VPN。\n\n是否释放该 VPN，让当前实例使用？\n释放后原实例将以无 TUN 模式继续运行。\n\n点击「释放 VPN」后请再次点击「启动网络」。")
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showVpnConflictDialog = false
+                                scope.launch {
+                                    EasyTierService.stopVpnService(context, otherInstance)
+                                    showToast("VPN 已释放，请再次点击启动")
+                                }
+                            }) { Text("释放 VPN") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showVpnConflictDialog = false }) { Text("取消") }
+                        }
+                    )
+                }
+
                 // 高级设置标题
                 Surface(
                     onClick = { showAdvanced = !showAdvanced },
@@ -565,15 +617,17 @@ fun NetworkConfigPage() {
                                     showToast("检测到旧配置缺少静态 IPv4，已自动切回 DHCP")
                                 }
 
-                                if (runtimeState.runningInstances.any { it != cfg.instanceName }) {
-                                    showToast("请先停止当前一键联机或其他网络")
+                                if (!cfg.noTun && EasyTierService.isVpnInUseByOther(cfg.instanceName)) {
+                                    showVpnConflictDialog = true
                                     return@launch
                                 }
                             }
 
                             isLoading = true
                             if (isRunning) {
-                                EasyTierService.stopVpnService(context)
+                                if (runtimeState.activeVpnInstanceName == cfg.instanceName) {
+                                    EasyTierService.stopVpnService(context, cfg.instanceName)
+                                }
                                 val result = EasyTierService.stopNetwork(cfg.instanceName)
                                 if (result.success) {
                                     isRunning = false
