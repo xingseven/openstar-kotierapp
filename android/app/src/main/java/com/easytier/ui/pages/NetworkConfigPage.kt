@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -446,43 +445,74 @@ fun NetworkConfigPage() {
                             Text("基本设置", fontWeight = FontWeight.SemiBold)
                         }
                         Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(value = labelText, onValueChange = { labelText = it; saveCurrentConfig() }, label = { Text("配置标签") }, placeholder = { Text("例如: 家庭网络") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = hostnameText, onValueChange = { hostnameText = it; saveCurrentConfig() }, label = { Text("本机主机名") }, placeholder = { Text("例如: my-phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it; saveCurrentConfig() }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(
-                            value = networkSecretText,
-                            onValueChange = { networkSecretText = it; saveCurrentConfig() },
-                            label = { Text("网络密钥") },
-                            placeholder = { Text("留空自动生成") },
-                            singleLine = true,
-                            visualTransformation = if (networkSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { networkSecretVisible = !networkSecretVisible }) {
-                                    Icon(
-                                        imageVector = if (networkSecretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                        contentDescription = if (networkSecretVisible) "隐藏网络密钥" else "显示网络密钥"
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                                OutlinedTextField(
+                                    value = labelText,
+                                    onValueChange = { labelText = it; saveCurrentConfig() },
+                                    label = { Text("配置标签") },
+                                    placeholder = { Text("例如: 家庭网络") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = hostnameText,
+                                    onValueChange = { hostnameText = it; saveCurrentConfig() },
+                                    label = { Text("本机主机名") },
+                                    placeholder = { Text("例如: my-phone") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = networkNameText,
+                                    onValueChange = { networkNameText = it; saveCurrentConfig() },
+                                    label = { Text("网络名称") },
+                                    placeholder = { Text("例如: my-net") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = networkSecretText,
+                                    onValueChange = { networkSecretText = it; saveCurrentConfig() },
+                                    label = { Text("网络密钥") },
+                                    placeholder = { Text("留空自动生成") },
+                                    singleLine = true,
+                                    visualTransformation = if (networkSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { networkSecretVisible = !networkSecretVisible }) {
+                                            Icon(
+                                                imageVector = if (networkSecretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                                contentDescription = if (networkSecretVisible) "隐藏网络密钥" else "显示网络密钥"
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (!dhcpEnabled) {
+                                    Spacer(Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = ipv4Text,
+                                        onValueChange = {
+                                            ipv4Text = it
+                                            saveCurrentConfig()
+                                        },
+                                        label = { Text("静态 IPv4") },
+                                        placeholder = { Text("例如: 10.144.144.10") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(5.dp))
+                            }
+                        }
                         if (!dhcpEnabled) {
-                            Spacer(Modifier.height(5.dp))
-                            OutlinedTextField(
-                                value = ipv4Text,
-                                onValueChange = {
-                                    ipv4Text = it
-                                    saveCurrentConfig()
-                                },
-                                label = { Text("静态 IPv4") },
-                                placeholder = { Text("例如: 10.144.144.10") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            // 保留静态 IPv4 输入在卡片内
                         }
                     }
                 }
