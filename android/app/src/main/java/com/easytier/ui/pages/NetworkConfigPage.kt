@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.net.VpnService
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +82,8 @@ fun NetworkConfigPage() {
     var isLoading by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
     var showVpnConflictDialog by remember { mutableStateOf(false) }
+    var protocolDropdownExpanded by remember { mutableStateOf(false) }
+    var encryptionDropdownExpanded by remember { mutableStateOf(false) }
 
     // 触发 Compose 重绘 —— 每次修改配置后调用
     fun forceRecompose() {
@@ -149,6 +152,45 @@ fun NetworkConfigPage() {
         }
     }
 
+    lateinit var bindConfig: (Int) -> Unit
+    lateinit var importConfigFromUri: (Uri) -> Unit
+
+    // 文件导入相关
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { importConfigFromUri(it) }
+    }
+
+    importConfigFromUri = importConfigFromUri@{ uri ->
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: run {
+                showToast("无法读取文件")
+                return@importConfigFromUri
+            }
+            val jsonStr = inputStream.bufferedReader().use { it.readText() }
+
+            val jsonObj = org.json.JSONObject(jsonStr)
+            val importedConfig = NetworkConfig.fromJson(jsonObj)
+
+            importedConfig.instanceName = NetworkConfig.generateInstanceName()
+            importedConfig.isRunning = false
+            importedConfig.defaultProtocol = NetworkConfig.normalizeDefaultProtocol(importedConfig.defaultProtocol)
+            importedConfig.encryptionAlgorithm = NetworkConfig.normalizeEncryptionAlgorithm(importedConfig.encryptionAlgorithm)
+
+            configs = (configs + importedConfig).toMutableList()
+            selectedIndex = configs.size - 1
+            saveConfigs()
+            bindConfig(selectedIndex)
+
+            showToast("配置已成功导入")
+            LogService.info("从文件导入配置: ${importedConfig.networkLabel.ifEmpty { importedConfig.instanceName }}", source = "NetworkConfig")
+        } catch (e: Exception) {
+            showToast("导入失败: ${e.message}")
+            android.util.Log.e("NetworkConfig", "Import failed", e)
+        }
+    }
+
     // 表单字段状态
     var labelText by remember { mutableStateOf("") }
     var hostnameText by remember { mutableStateOf("") }
@@ -166,8 +208,8 @@ fun NetworkConfigPage() {
     var encryptionAlgorithmText by remember { mutableStateOf("aes-gcm") }
 
     // 选择配置时绑定表单
-    fun bindConfig(index: Int) {
-        if (index < 0 || index >= configs.size) return
+    bindConfig = bindConfig@{ index ->
+        if (index < 0 || index >= configs.size) return@bindConfig
         val cfg = configs[index]
         labelText = cfg.networkLabel
         hostnameText = cfg.hostname
@@ -181,8 +223,8 @@ fun NetworkConfigPage() {
         listenAddressesText = cfg.listenAddresses.joinToString(", ")
         devNameText = cfg.devName
         mtuText = if (cfg.mtu > 0) cfg.mtu.toString() else ""
-        defaultProtocolText = cfg.defaultProtocol
-        encryptionAlgorithmText = cfg.encryptionAlgorithm
+        defaultProtocolText = NetworkConfig.normalizeDefaultProtocol(cfg.defaultProtocol)
+        encryptionAlgorithmText = NetworkConfig.normalizeEncryptionAlgorithm(cfg.encryptionAlgorithm)
         isRunning = cfg.isRunning
         showAdvanced = false
     }
@@ -202,8 +244,10 @@ fun NetworkConfigPage() {
         cfg.listenAddresses = csvToMutableStringList(listenAddressesText)
         cfg.devName = devNameText.trim()
         cfg.mtu = mtuText.toIntOrNull()?.takeIf { it in 1..1380 } ?: 0
-        cfg.defaultProtocol = defaultProtocolText.trim().lowercase()
-        cfg.encryptionAlgorithm = encryptionAlgorithmText.trim().ifEmpty { "aes-gcm" }.lowercase()
+        cfg.defaultProtocol = NetworkConfig.normalizeDefaultProtocol(defaultProtocolText)
+        cfg.encryptionAlgorithm = NetworkConfig.normalizeEncryptionAlgorithm(encryptionAlgorithmText)
+        defaultProtocolText = cfg.defaultProtocol
+        encryptionAlgorithmText = cfg.encryptionAlgorithm
         saveConfigs()
     }
 
@@ -294,6 +338,7 @@ fun NetworkConfigPage() {
         topBar = {
             CompactTopBar(title = "网络配置") {
                     IconButton(onClick = { addConfig() }) { AppIcon(AppIcons.Add, contentDescription = "新建配置") }
+                    IconButton(onClick = { importFileLauncher.launch(arrayOf("application/json")) }) { AppIcon(AppIcons.Login, contentDescription = "导入配置") }
                     IconButton(onClick = { deleteConfig() }) { AppIcon(AppIcons.Delete, contentDescription = "删除配置") }
                     IconButton(onClick = {
                         saveCurrentConfig()
@@ -359,6 +404,81 @@ fun NetworkConfigPage() {
                         OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it; saveCurrentConfig() }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
                         OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it; saveCurrentConfig() }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(5.dp))
+
+                        ExposedDropdownMenuBox(
+                            expanded = protocolDropdownExpanded,
+                            onExpandedChange = { protocolDropdownExpanded = !protocolDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = when (defaultProtocolText) {
+                                    "" -> "自动"
+                                    else -> defaultProtocolText
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("默认协议") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = protocolDropdownExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = protocolDropdownExpanded,
+                                onDismissRequest = { protocolDropdownExpanded = false }
+                            ) {
+                                listOf("", "udp", "tcp", "wg", "ws", "wss").forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(if (option.isEmpty()) "自动" else option) },
+                                        onClick = {
+                                            defaultProtocolText = option
+                                            protocolDropdownExpanded = false
+                                            saveCurrentConfig()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(5.dp))
+
+                        ExposedDropdownMenuBox(
+                            expanded = encryptionDropdownExpanded,
+                            onExpandedChange = { encryptionDropdownExpanded = !encryptionDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = encryptionAlgorithmText,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("加密算法") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = encryptionDropdownExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = encryptionDropdownExpanded,
+                                onDismissRequest = { encryptionDropdownExpanded = false }
+                            ) {
+                                listOf(
+                                    "aes-gcm",
+                                    "xor",
+                                    "chacha20",
+                                    "aes-gcm-256",
+                                    "openssl-aes128-gcm",
+                                    "openssl-aes256-gcm",
+                                    "openssl-chacha20"
+                                ).forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            encryptionAlgorithmText = option
+                                            encryptionDropdownExpanded = false
+                                            saveCurrentConfig()
+                                        }
+                                    )
+                                }
+                            }
+                        }
                         Spacer(Modifier.height(5.dp))
 
                         if (configs.getOrNull(selectedIndex)?.dhcp != true) {

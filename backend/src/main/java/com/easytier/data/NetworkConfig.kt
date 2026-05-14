@@ -224,6 +224,35 @@ data class NetworkConfig(
 
         fun oneClickInstanceName(): String = ONE_CLICK_INSTANCE_NAME
 
+        val SUPPORTED_DEFAULT_PROTOCOLS: Set<String> = setOf(
+            "",
+            "udp",
+            "tcp",
+            "wg",
+            "ws",
+            "wss"
+        )
+
+        val SUPPORTED_ENCRYPTION_ALGORITHMS: Set<String> = setOf(
+            "aes-gcm",
+            "xor",
+            "chacha20",
+            "aes-gcm-256",
+            "openssl-aes128-gcm",
+            "openssl-aes256-gcm",
+            "openssl-chacha20"
+        )
+
+        fun normalizeDefaultProtocol(value: String): String {
+            val normalized = value.trim().lowercase()
+            return if (normalized in SUPPORTED_DEFAULT_PROTOCOLS) normalized else ""
+        }
+
+        fun normalizeEncryptionAlgorithm(value: String): String {
+            val normalized = value.trim().lowercase()
+            return if (normalized in SUPPORTED_ENCRYPTION_ALGORITHMS) normalized else "aes-gcm"
+        }
+
         fun fromJson(obj: JSONObject): NetworkConfig {
             return NetworkConfig(
                 instanceName = obj.optString("instance_name", generateInstanceName()),
@@ -266,8 +295,8 @@ data class NetworkConfig(
                 enableEncryption = obj.optBoolean("enable_encryption", true),
                 acceptDns = obj.optBoolean("accept_dns", false),
                 enableUdpBroadcastRelay = obj.optBoolean("enable_udp_broadcast_relay", true),
-                defaultProtocol = obj.optString("default_protocol", "").lowercase(),
-                encryptionAlgorithm = obj.optString("encryption_algorithm", "aes-gcm").ifEmpty { "aes-gcm" }.lowercase(),
+                defaultProtocol = normalizeDefaultProtocol(obj.optString("default_protocol", "")),
+                encryptionAlgorithm = normalizeEncryptionAlgorithm(obj.optString("encryption_algorithm", "aes-gcm")),
                 foreignNetworkWhitelistEnabled = obj.optBoolean("foreign_network_whitelist_enabled", false),
                 foreignNetworkWhitelist = jsonArrayToStringList(obj.optJSONArray("foreign_network_whitelist")),
                 listenAddresses = jsonArrayToStringList(
