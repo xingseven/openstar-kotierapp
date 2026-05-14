@@ -1,16 +1,13 @@
 ﻿# 版本记录
 
-## 4.2.45 (4063) - 2026-05-14
-
-- 网络配置页补齐 PC 端协议类型完整支持：新增“默认协议”选项（自动/udp/tcp/wg/ws/wss）与“加密算法”选项（aes-gcm/xor/chacha20/aes-gcm-256/openssl-aes128-gcm/openssl-aes256-gcm/openssl-chacha20），导入后可视化编辑与保存。
-- 强化导入兼容性：对 `default_protocol` 与 `encryption_algorithm` 做白名单规范化，确保来自 PC 端 JSON 的协议字段在 Android 端稳定落库与运行，不受非法值影响。
-
 ## 4.2.44 (4062) - 2026-05-14
 
 - 鏂板缃戠粶閰嶇疆椤靛鍏ュ姛鑳斤細鏀寔浠庢枃浠跺鍏?QtEasyTier (PC绔? 瀵煎嚭鐨?JSON 閰嶇疆鏂囦欢锛屽吋瀹?PC绔笌 Android 绔殑閰嶇疆浜掗€氥€?
 - 淇娣辫壊妯″紡涓嬪垏鎹富棰樺悗椤堕儴鐘舵€佹爮鍥炬爣棰滆壊鏈疄鏃舵洿鏂扮殑闂锛氬皢 `SideEffect` 鏇挎崲涓?`LaunchedEffect` 鐩戝惉涓婚鍙樺寲銆?
 - 鏈嶅姟鍣ㄩ〉闈㈠睆钄?ID 涓?183 鐨勫叕鍏辫妭鐐逛笉鍦ㄥ垪琛ㄤ腑鏄剧ず銆?
 - 璁剧疆椤甸潰"鏈嶅姟鍩轰簬 EasyTier"鏉＄洰鏂板 easytier.cn 缃戠珯鍏ュ彛銆?
+- 网络配置页补齐 PC 端协议类型完整支持：新增“默认协议”选项（自动/udp/tcp/wg/ws/wss）与“加密算法”选项（aes-gcm/xor/chacha20/aes-gcm-256/openssl-aes128-gcm/openssl-aes256-gcm/openssl-chacha20），导入后可视化编辑与保存。
+- 强化导入兼容性：对 `default_protocol` 与 `encryption_algorithm` 做白名单规范化，确保来自 PC 端 JSON 的协议字段在 Android 端稳定落库与运行，不受非法值影响。
 
 ## 4.2.43 (4061) - 2026-05-13
 
