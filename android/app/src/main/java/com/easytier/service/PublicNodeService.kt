@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit
 object PublicNodeService {
     private const val STATUS_URL = "https://info.qtet.cn/uptime/status/easytier"
     private const val HEARTBEAT_URL = "https://info.qtet.cn/uptime/api/status-page/heartbeat/easytier"
+    private const val HIDDEN_PUBLIC_NODE_URL = "tcp://183.230.36.171:11010"
+    private const val HIDDEN_PUBLIC_NODE_KEYWORD = "重庆移动跨网"
 
     private val relayGroupNames = listOf("社区公共节点", "社区公共节点[海外]")
     private val urlPattern = Regex("""^(\w+://[^\s（(]+)[（(](.+)[）)]$""")
@@ -51,6 +53,8 @@ object PublicNodeService {
                     val type = m.optString("type", "port")
                     val (serverUrl, desc) = parseNodeName(rawName)
                     if (serverUrl.isEmpty()) continue
+                    if (serverUrl == HIDDEN_PUBLIC_NODE_URL) continue
+                    if (rawName.contains(HIDDEN_PUBLIC_NODE_KEYWORD) || desc.contains(HIDDEN_PUBLIC_NODE_KEYWORD)) continue
 
                     nodes.add(PublicNode(
                         id = id,

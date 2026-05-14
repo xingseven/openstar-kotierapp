@@ -1,4 +1,4 @@
-﻿package com.easytier.ui.pages
+package com.easytier.ui.pages
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -203,7 +203,7 @@ fun ServersPage() {
                 }
 
                 if (publicExpanded) {
-                    val visibleNodes = publicNodes.filter { !it.serverUrl.contains("*") }
+                    val visibleNodes = publicNodes.filter { !it.serverUrl.contains("*") && it.id != 183 }
                     items(visibleNodes, key = { it.id }) { node ->
                         PublicNodeCard(node = node, onUse = {
                             val exists = servers.any { it.url == node.serverUrl }

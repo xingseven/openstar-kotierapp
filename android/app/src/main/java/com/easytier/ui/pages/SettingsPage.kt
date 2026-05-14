@@ -192,12 +192,12 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("服务基于 EasyTier", fontSize = 13.sp) },
-                    supportingContent = { Text("qtet.cn", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    supportingContent = { Text("easytier.cn / qtet.cn", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://qtet.cn"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://easytier.cn"))
                             context.startActivity(intent)
                         }
                 )

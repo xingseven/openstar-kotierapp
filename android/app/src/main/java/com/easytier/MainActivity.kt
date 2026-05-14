@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
             }
             val view = LocalView.current
 
-            SideEffect {
+            LaunchedEffect(isDarkTheme) {
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
             }
 

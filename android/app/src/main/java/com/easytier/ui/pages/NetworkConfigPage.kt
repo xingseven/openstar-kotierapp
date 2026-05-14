@@ -42,8 +42,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import com.easytier.backend.csvToMutableStringList
 import com.easytier.backend.collectProxyCidrsFromJson
 import com.easytier.data.NetworkConfig
@@ -206,6 +211,21 @@ fun NetworkConfigPage() {
     var mtuText by remember { mutableStateOf("") }
     var defaultProtocolText by remember { mutableStateOf("") }
     var encryptionAlgorithmText by remember { mutableStateOf("aes-gcm") }
+    var networkSecretVisible by remember { mutableStateOf(false) }
+    var dhcpEnabled by remember { mutableStateOf(true) }
+    var latencyFirstEnabled by remember { mutableStateOf(false) }
+    var privateModeEnabled by remember { mutableStateOf(true) }
+    var noTunEnabled by remember { mutableStateOf(false) }
+    var disableP2pEnabled by remember { mutableStateOf(false) }
+    var disableUdpHolePunchingEnabled by remember { mutableStateOf(false) }
+    var disableTcpHolePunchingEnabled by remember { mutableStateOf(false) }
+    var disableUpnpEnabled by remember { mutableStateOf(false) }
+    var systemForwardingEnabled by remember { mutableStateOf(false) }
+    var disableIpv6Enabled by remember { mutableStateOf(false) }
+    var enableEncryptionEnabled by remember { mutableStateOf(true) }
+    var acceptDnsEnabled by remember { mutableStateOf(false) }
+    var enableUdpBroadcastRelayEnabled by remember { mutableStateOf(true) }
+    var foreignNetworkWhitelistEnabled by remember { mutableStateOf(false) }
 
     // 选择配置时绑定表单
     bindConfig = bindConfig@{ index ->
@@ -225,6 +245,21 @@ fun NetworkConfigPage() {
         mtuText = if (cfg.mtu > 0) cfg.mtu.toString() else ""
         defaultProtocolText = NetworkConfig.normalizeDefaultProtocol(cfg.defaultProtocol)
         encryptionAlgorithmText = NetworkConfig.normalizeEncryptionAlgorithm(cfg.encryptionAlgorithm)
+        networkSecretVisible = false
+        dhcpEnabled = cfg.dhcp
+        latencyFirstEnabled = cfg.latencyFirst
+        privateModeEnabled = cfg.privateMode
+        noTunEnabled = cfg.noTun
+        disableP2pEnabled = cfg.disableP2p
+        disableUdpHolePunchingEnabled = cfg.disableUdpHolePunching
+        disableTcpHolePunchingEnabled = cfg.disableTcpHolePunching
+        disableUpnpEnabled = cfg.disableUpnp
+        systemForwardingEnabled = cfg.systemForwarding
+        disableIpv6Enabled = cfg.disableIpv6
+        enableEncryptionEnabled = cfg.enableEncryption
+        acceptDnsEnabled = cfg.acceptDns
+        enableUdpBroadcastRelayEnabled = cfg.enableUdpBroadcastRelay
+        foreignNetworkWhitelistEnabled = cfg.foreignNetworkWhitelistEnabled
         isRunning = cfg.isRunning
         showAdvanced = false
     }
@@ -236,7 +271,21 @@ fun NetworkConfigPage() {
         cfg.hostname = hostnameText
         cfg.networkName = networkNameText
         cfg.networkSecret = networkSecretText
+        cfg.dhcp = dhcpEnabled
         cfg.ipv4 = ipv4Text
+        cfg.latencyFirst = latencyFirstEnabled
+        cfg.privateMode = privateModeEnabled
+        cfg.noTun = noTunEnabled
+        cfg.disableP2p = disableP2pEnabled
+        cfg.disableUdpHolePunching = disableUdpHolePunchingEnabled
+        cfg.disableTcpHolePunching = disableTcpHolePunchingEnabled
+        cfg.disableUpnp = disableUpnpEnabled
+        cfg.systemForwarding = systemForwardingEnabled
+        cfg.disableIpv6 = disableIpv6Enabled
+        cfg.enableEncryption = enableEncryptionEnabled
+        cfg.acceptDns = acceptDnsEnabled
+        cfg.enableUdpBroadcastRelay = enableUdpBroadcastRelayEnabled
+        cfg.foreignNetworkWhitelistEnabled = foreignNetworkWhitelistEnabled
         cfg.proxyNetworks = csvToMutableStringList(proxyNetworksText)
         cfg.customRoutes = csvToMutableStringList(customRoutesText)
         cfg.exitNodes = csvToMutableStringList(exitNodesText)
@@ -403,87 +452,275 @@ fun NetworkConfigPage() {
                         Spacer(Modifier.height(5.dp))
                         OutlinedTextField(value = networkNameText, onValueChange = { networkNameText = it; saveCurrentConfig() }, label = { Text("网络名称") }, placeholder = { Text("例如: my-net") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(5.dp))
-                        OutlinedTextField(value = networkSecretText, onValueChange = { networkSecretText = it; saveCurrentConfig() }, label = { Text("网络密钥") }, placeholder = { Text("留空自动生成") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(5.dp))
-
-                        ExposedDropdownMenuBox(
-                            expanded = protocolDropdownExpanded,
-                            onExpandedChange = { protocolDropdownExpanded = !protocolDropdownExpanded }
-                        ) {
-                            OutlinedTextField(
-                                value = when (defaultProtocolText) {
-                                    "" -> "自动"
-                                    else -> defaultProtocolText
-                                },
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("默认协议") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = protocolDropdownExpanded) },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = protocolDropdownExpanded,
-                                onDismissRequest = { protocolDropdownExpanded = false }
-                            ) {
-                                listOf("", "udp", "tcp", "wg", "ws", "wss").forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(if (option.isEmpty()) "自动" else option) },
-                                        onClick = {
-                                            defaultProtocolText = option
-                                            protocolDropdownExpanded = false
-                                            saveCurrentConfig()
-                                        }
+                        OutlinedTextField(
+                            value = networkSecretText,
+                            onValueChange = { networkSecretText = it; saveCurrentConfig() },
+                            label = { Text("网络密钥") },
+                            placeholder = { Text("留空自动生成") },
+                            singleLine = true,
+                            visualTransformation = if (networkSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { networkSecretVisible = !networkSecretVisible }) {
+                                    Icon(
+                                        imageVector = if (networkSecretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                        contentDescription = if (networkSecretVisible) "隐藏网络密钥" else "显示网络密钥"
                                     )
                                 }
-                            }
-                        }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         Spacer(Modifier.height(5.dp))
-
-                        ExposedDropdownMenuBox(
-                            expanded = encryptionDropdownExpanded,
-                            onExpandedChange = { encryptionDropdownExpanded = !encryptionDropdownExpanded }
-                        ) {
-                            OutlinedTextField(
-                                value = encryptionAlgorithmText,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("加密算法") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = encryptionDropdownExpanded) },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = encryptionDropdownExpanded,
-                                onDismissRequest = { encryptionDropdownExpanded = false }
-                            ) {
-                                listOf(
-                                    "aes-gcm",
-                                    "xor",
-                                    "chacha20",
-                                    "aes-gcm-256",
-                                    "openssl-aes128-gcm",
-                                    "openssl-aes256-gcm",
-                                    "openssl-chacha20"
-                                ).forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(option) },
-                                        onClick = {
-                                            encryptionAlgorithmText = option
-                                            encryptionDropdownExpanded = false
-                                            saveCurrentConfig()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(5.dp))
-
-                        if (configs.getOrNull(selectedIndex)?.dhcp != true) {
+                        if (!dhcpEnabled) {
                             Spacer(Modifier.height(5.dp))
-                            OutlinedTextField(value = ipv4Text, onValueChange = { ipv4Text = it }, label = { Text("静态 IPv4") }, placeholder = { Text("例如: 10.144.144.10") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                value = ipv4Text,
+                                onValueChange = {
+                                    ipv4Text = it
+                                    saveCurrentConfig()
+                                },
+                                label = { Text("静态 IPv4") },
+                                placeholder = { Text("例如: 10.144.144.10") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AppIcon(AppIcons.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("高级设置", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                                Text(if (showAdvanced) "收起" else "展开")
+                            }
+                        }
+                        AnimatedVisibility(visible = showAdvanced) {
+                            Column {
+                                Text(
+                                    "这些选项会直接影响实际组网行为，修改后立即保存到当前配置。",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                CustomSwitch(
+                                    label = "DHCP 自动分配",
+                                    hint = "关闭后需要填写静态 IPv4",
+                                    value = dhcpEnabled
+                                ) {
+                                    dhcpEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                Spacer(Modifier.height(5.dp))
+                                ExposedDropdownMenuBox(
+                                     expanded = protocolDropdownExpanded,
+                                    onExpandedChange = { protocolDropdownExpanded = !protocolDropdownExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        value = when (defaultProtocolText) {
+                                            "" -> "自动"
+                                            else -> defaultProtocolText
+                                        },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("默认协议") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = protocolDropdownExpanded) },
+                                        modifier = Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = protocolDropdownExpanded,
+                                        onDismissRequest = { protocolDropdownExpanded = false }
+                                    ) {
+                                        listOf("", "udp", "tcp", "wg", "ws", "wss").forEach { option ->
+                                            DropdownMenuItem(
+                                                text = { Text(if (option.isEmpty()) "自动" else option) },
+                                                onClick = {
+                                                    defaultProtocolText = option
+                                                    protocolDropdownExpanded = false
+                                                    saveCurrentConfig()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(5.dp))
+                                ExposedDropdownMenuBox(
+                                    expanded = encryptionDropdownExpanded,
+                                    onExpandedChange = { encryptionDropdownExpanded = !encryptionDropdownExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        value = encryptionAlgorithmText,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("加密算法") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = encryptionDropdownExpanded) },
+                                        modifier = Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = encryptionDropdownExpanded,
+                                        onDismissRequest = { encryptionDropdownExpanded = false }
+                                    ) {
+                                        listOf(
+                                            "aes-gcm",
+                                            "xor",
+                                            "chacha20",
+                                            "aes-gcm-256",
+                                            "openssl-aes128-gcm",
+                                            "openssl-aes256-gcm",
+                                            "openssl-chacha20"
+                                        ).forEach { option ->
+                                            DropdownMenuItem(
+                                                text = { Text(option) },
+                                                onClick = {
+                                                    encryptionAlgorithmText = option
+                                                    encryptionDropdownExpanded = false
+                                                    saveCurrentConfig()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                SectionLabel("连接行为")
+                                CustomSwitch("低延迟优先", latencyFirstEnabled) {
+                                    latencyFirstEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("私有模式", privateModeEnabled) {
+                                    privateModeEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("禁用 P2P", disableP2pEnabled) {
+                                    disableP2pEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("禁用 UDP 打洞", disableUdpHolePunchingEnabled) {
+                                    disableUdpHolePunchingEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("禁用 TCP 打洞", disableTcpHolePunchingEnabled) {
+                                    disableTcpHolePunchingEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("禁用 UPnP", disableUpnpEnabled) {
+                                    disableUpnpEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                SectionLabel("安全与协议")
+                                CustomSwitch("启用加密", enableEncryptionEnabled) {
+                                    enableEncryptionEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("启用魔法 DNS", acceptDnsEnabled) {
+                                    acceptDnsEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("禁用 IPv6", disableIpv6Enabled) {
+                                    disableIpv6Enabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("启用 UDP 广播中继", enableUdpBroadcastRelayEnabled) {
+                                    enableUdpBroadcastRelayEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                SectionLabel("TUN 与转发")
+                                CustomSwitch("无 TUN 模式", noTunEnabled) {
+                                    noTunEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                CustomSwitch("系统转发", systemForwardingEnabled) {
+                                    systemForwardingEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                SectionLabel("高级地址")
+                                OutlinedTextField(
+                                    value = listenAddressesText,
+                                    onValueChange = {
+                                        listenAddressesText = it
+                                        saveCurrentConfig()
+                                    },
+                                    label = { Text("监听地址（逗号分隔）") },
+                                    placeholder = { Text("tcp://0.0.0.0:11010, udp://0.0.0.0:11010") },
+                                    singleLine = false,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(
+                                    value = proxyNetworksText,
+                                    onValueChange = {
+                                        proxyNetworksText = it
+                                        saveCurrentConfig()
+                                    },
+                                    label = { Text("子网代理 CIDR（逗号分隔）") },
+                                    placeholder = { Text("例如: 192.168.1.0/24") },
+                                    singleLine = false,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(
+                                    value = customRoutesText,
+                                    onValueChange = {
+                                        customRoutesText = it
+                                        saveCurrentConfig()
+                                    },
+                                    label = { Text("自定义路由（逗号分隔）") },
+                                    placeholder = { Text("例如: 10.10.0.0/16") },
+                                    singleLine = false,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                CustomSwitch("启用网络白名单", foreignNetworkWhitelistEnabled) {
+                                    foreignNetworkWhitelistEnabled = it
+                                    saveCurrentConfig()
+                                }
+                                if (foreignNetworkWhitelistEnabled) {
+                                    Spacer(Modifier.height(5.dp))
+                                    OutlinedTextField(
+                                        value = whitelistText,
+                                        onValueChange = {
+                                            whitelistText = it
+                                            saveCurrentConfig()
+                                        },
+                                        label = { Text("网络白名单（逗号分隔）") },
+                                        placeholder = { Text("例如: office-net, test-net") },
+                                        singleLine = false,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(
+                                    value = devNameText,
+                                    onValueChange = {
+                                        devNameText = it
+                                        saveCurrentConfig()
+                                    },
+                                    label = { Text("TUN 设备名") },
+                                    placeholder = { Text("留空使用默认") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                OutlinedTextField(
+                                    value = mtuText,
+                                    onValueChange = {
+                                        mtuText = it
+                                        saveCurrentConfig()
+                                    },
+                                    label = { Text("MTU (1-1380)") },
+                                    placeholder = { Text("留空使用默认") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
@@ -618,7 +855,8 @@ fun NetworkConfigPage() {
                                     showToast("请先填写网络名称")
                                     return@launch
                                 }
-                                if (!cfg.dhcp && cfg.ipv4.isBlank()) {
+                                if (!dhcpEnabled && cfg.ipv4.isBlank()) {
+                                    dhcpEnabled = true
                                     cfg.dhcp = true
                                     saveConfigs()
                                     forceRecompose()
