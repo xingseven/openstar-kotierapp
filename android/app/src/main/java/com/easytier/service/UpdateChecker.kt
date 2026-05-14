@@ -22,8 +22,8 @@ data class UpdateInfo(
 class UpdateChecker(private val context: Context) {
 
     companion object {
-        private const val GITHUB_API =
-            "https://api.github.com/repos/xingseven/openstar-kotierapp/releases/latest"
+        private const val VERSION_CHECK_API =
+            "https://sevencn.com/api/software/version-check?name=kotier"
         private const val TIMEOUT = 15_000
     }
 
@@ -34,16 +34,16 @@ class UpdateChecker(private val context: Context) {
 
     suspend fun check(): Result = withContext(Dispatchers.IO) {
         try {
-            val conn = URL(GITHUB_API).openConnection() as HttpURLConnection
+            val conn = URL(VERSION_CHECK_API).openConnection() as HttpURLConnection
             conn.apply {
                 connectTimeout = TIMEOUT
                 readTimeout = TIMEOUT
-                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("Accept", "application/json")
             }
 
             val code = conn.responseCode
             if (code == 404) {
-                return@withContext Result.Unavailable("暂无发布版本")
+                return@withContext Result.Unavailable("软件未找到")
             }
             if (code != 200) {
                 return@withContext Result.Unavailable("检查失败 (HTTP $code)")
@@ -52,40 +52,24 @@ class UpdateChecker(private val context: Context) {
             val body = conn.inputStream.bufferedReader().readText()
             val json = JSONObject(body)
 
-            val tagName = json.optString("tag_name", "") ?: ""
-            if (tagName.isBlank()) {
-                return@withContext Result.Unavailable("无法获取版本信息")
-            }
+            val latestVersion = json.optString("latest_version", "").takeIf { it.isNotBlank() }
+                ?: return@withContext Result.Unavailable("无法获取版本信息")
 
-            // 从 assets 找 APK
-            val assets = json.optJSONArray("assets") ?: return@withContext Result.Unavailable("未找到 APK 下载")
-            var apkUrl: String? = null
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                val name = asset.optString("name", "")
-                if (name.endsWith(".apk")) {
-                    apkUrl = asset.optString("browser_download_url", "")
-                    break
-                }
-            }
-
-            if (apkUrl.isNullOrBlank()) {
-                return@withContext Result.Unavailable("未找到 APK 下载")
-            }
+            val downloadUrl = json.optString("download_url", "").takeIf { it.isNotBlank() }
+                ?: return@withContext Result.Unavailable("未找到下载链接")
 
             val currentVersion = com.easytier.BuildConfig.VERSION_NAME
-            val latestVersion = tagName.removePrefix("v")
 
             if (compareVersions(latestVersion, currentVersion) <= 0) {
                 return@withContext Result.Unavailable("已是最新版本 ($currentVersion)")
             }
 
-            val releaseNotes = json.optString("body", "").take(500)
+            val releaseNotes = json.optString("release_notes", "").take(500)
 
             Result.Available(
                 UpdateInfo(
                     latestVersion = latestVersion,
-                    downloadUrl = apkUrl,
+                    downloadUrl = downloadUrl,
                     releaseNotes = releaseNotes,
                 )
             )
