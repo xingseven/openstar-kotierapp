@@ -84,6 +84,7 @@ fun NetworkConfigPage() {
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
     var showAdvanced by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var isStopping by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
     var showVpnConflictDialog by remember { mutableStateOf(false) }
     var protocolDropdownExpanded by remember { mutableStateOf(false) }
@@ -143,7 +144,9 @@ fun NetworkConfigPage() {
                 assignedIp.ifEmpty { NetworkConfig.vpnIpv4Address(config.ipv4).ifEmpty { "10.144.144.1" } }, 24, routes)
             isRunning = true
             config.isRunning = true
+            forceRecompose()
             isLoading = false
+            isStopping = false
         } else {
             scope.launch {
                 EasyTierService.stopNetwork(config.instanceName)
@@ -153,6 +156,7 @@ fun NetworkConfigPage() {
             forceRecompose()
             showToast("VPN 授权被拒绝")
             isLoading = false
+            isStopping = false
         }
     }
 
@@ -330,7 +334,9 @@ fun NetworkConfigPage() {
         EasyTierService.refreshRuntimeState()
     }
 
-    LaunchedEffect(runtimeState, selectedIndex, configs.size) {
+    LaunchedEffect(runtimeState, selectedIndex, configs.size, isLoading) {
+        // isLoading 期间正在执行启动/停止操作，本地状态优先，不允许 runtimeState 覆盖
+        if (isLoading) return@LaunchedEffect
         var changed = false
         configs.forEach { cfg ->
             val daemonRunning = runtimeState.runningInstances.contains(cfg.instanceName)
@@ -878,10 +884,12 @@ fun NetworkConfigPage() {
                         val cfg = configs[selectedIndex]
                         scope.launch {
                             isLoading = true
+                            isStopping = isRunning
                             saveCurrentConfig()
                             if (!isRunning) {
                                 if (cfg.networkName.isBlank()) {
                                     isLoading = false
+                                    isStopping = false
                                     showToast("请先填写网络名称")
                                     return@launch
                                 }
@@ -896,26 +904,27 @@ fun NetworkConfigPage() {
 
                                 if (!cfg.noTun && EasyTierService.isVpnInUseByOther(cfg.instanceName)) {
                                     isLoading = false
+                                    isStopping = false
                                     showVpnConflictDialog = true
                                     return@launch
                                 }
                             }
                             if (isRunning) {
                                 val result = EasyTierService.stopNetwork(cfg.instanceName)
-                                if (runtimeState.activeVpnInstanceName == cfg.instanceName) {
-                                    EasyTierService.stopVpnService(context, cfg.instanceName)
-                                }
                                 if (result.success) {
+                                    EasyTierService.stopVpnService(context, cfg.instanceName)
                                     isRunning = false
                                     cfg.isRunning = false
                                     nodes = emptyList()
                                     forceRecompose()
                                 }
                                 isLoading = false
+                                isStopping = false
                             } else {
                                 val result = EasyTierService.startNetwork(cfg)
                                 if (!result.success) {
                                     isLoading = false
+                                    isStopping = false
                                     showToast("启动失败: ${result.errorMessage}")
                                     return@launch
                                 }
@@ -927,6 +936,7 @@ fun NetworkConfigPage() {
 
                                 if (cfg.noTun) {
                                     isLoading = false
+                                    isStopping = false
                                     showToast("网络已启动（禁用 TUN）")
                                     return@launch
                                 }
@@ -958,6 +968,7 @@ fun NetworkConfigPage() {
                                 if (assignedIp.isEmpty()) {
                                     val stopResult = EasyTierService.stopNetwork(cfg.instanceName)
                                     isLoading = false
+                                    isStopping = false
                                     isRunning = false
                                     cfg.isRunning = false
                                     nodes = emptyList()
@@ -980,6 +991,7 @@ fun NetworkConfigPage() {
 
                                 EasyTierService.startVpnService(context, cfg.instanceName, assignedIp, 24, routes)
                                 isLoading = false
+                                isStopping = false
                             }
                         }
                     },
@@ -992,7 +1004,7 @@ fun NetworkConfigPage() {
                     Spacer(Modifier.width(6.dp))
                     Text(
                         when {
-                            isLoading && isRunning -> "停止中..."
+                            isLoading && isStopping -> "停止中..."
                             isLoading -> "启动中..."
                             !isRunning -> "启动网络"
                             else -> "停止网络"

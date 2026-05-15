@@ -29,7 +29,7 @@ class EasyTierVpnService : VpnService() {
             Log.i(TAG, "received explicit stop request")
             LogService.info("收到停止 VPN 服务请求", source = TAG)
             job?.cancel()
-            stopSelf(startId)
+            stopSelf()  // 不带 startId，强制停止而不等待之前的请求
             return START_NOT_STICKY
         }
 

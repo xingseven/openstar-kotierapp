@@ -108,6 +108,9 @@ object EasyTierService {
             if (result.success) {
                 config.isRunning = true
                 refreshRuntimeState()
+                _runtimeState.update { current ->
+                    current.copy(runningInstances = current.runningInstances + config.instanceName)
+                }
                 LogService.info("网络实例已启动: ${config.instanceName}", source = TAG)
                 EasyTierResult.ok()
             } else {
@@ -126,17 +129,15 @@ object EasyTierService {
         if (!initialized) return EasyTierResult.fail("not initialized")
 
         return try {
-            val shouldStopVpn = _runtimeState.value.activeVpnInstanceName == instanceName
             val result = backend.stopNetwork(instanceName)
             if (result.success) {
-                if (shouldStopVpn) {
-                    val context = appContext
-                    if (context != null) {
-                        LogService.info("准备停止 VPN 服务: $instanceName", source = TAG)
-                        stopVpnServiceInternal(context, instanceName, force = true)
-                    } else {
-                        Log.w(TAG, "unable to stop VPN service for $instanceName: app context unavailable")
-                    }
+                val context = appContext
+                if (context != null) {
+                    LogService.info("准备停止 VPN 服务: $instanceName", source = TAG)
+                    // 无论 activeVpnInstanceName 是否匹配都尝试停止，防止 App 重启后状态丢失
+                    stopVpnServiceInternal(context, instanceName, force = true)
+                } else {
+                    Log.w(TAG, "unable to stop VPN service for $instanceName: app context unavailable")
                 }
                 refreshRuntimeState()
                 LogService.info("网络实例已停止: $instanceName", source = TAG)
@@ -333,7 +334,7 @@ object EasyTierService {
     }
 
     fun stopVpnService(activity: Activity, instanceName: String? = null) {
-        stopVpnServiceInternal(activity, instanceName)
+        stopVpnServiceInternal(activity, instanceName, force = true)
     }
 
     private fun stopVpnServiceInternal(context: Context, instanceName: String? = null, force: Boolean = false) {

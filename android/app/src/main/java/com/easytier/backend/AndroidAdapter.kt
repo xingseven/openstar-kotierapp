@@ -112,6 +112,7 @@ class AndroidAdapter(
         }
         return try {
             context.startService(intent)
+            context.stopService(Intent(context, EasyTierVpnService::class.java))
             true
         } catch (e: Exception) {
             Log.w(TAG, "failed to deliver explicit VPN stop action, falling back to stopService", e)
