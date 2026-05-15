@@ -454,7 +454,7 @@ fun NetworkConfigPage() {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            shape = RoundedCornerShape(20.dp)
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
                                 OutlinedTextField(
@@ -812,7 +812,7 @@ fun NetworkConfigPage() {
                                 onClick = {
                                     if (newUrl.isNotBlank()) { servers.add(newUrl.trim()); newUrl = "" }
                                 },
-                                shape = RoundedCornerShape(999.dp),
+                                shape = RoundedCornerShape(499.5.dp),
                                 modifier = Modifier.height(46.dp)
                             ) {
                                 Text("添加")
@@ -825,7 +825,7 @@ fun NetworkConfigPage() {
                             curServers.forEachIndexed { idx, server ->
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.background
                                 ) {
                                     Row(

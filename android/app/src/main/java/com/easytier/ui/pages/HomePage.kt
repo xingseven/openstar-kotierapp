@@ -120,7 +120,7 @@ fun HomePage() {
                     .padding(padding)
                     .fillMaxSize()
                     .padding(horizontal = 8.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(
                     width = 1.dp,

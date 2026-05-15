@@ -496,7 +496,7 @@ private fun ModeButton(selected: Boolean, icon: androidx.compose.ui.graphics.vec
     val textColor by animateColorAsState(
         targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurface, label = "modeText"
     )
-    Surface(onClick = onClick, shape = RoundedCornerShape(10.dp), color = bgColor, modifier = Modifier.fillMaxWidth()) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(5.dp), color = bgColor, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp),
             horizontalArrangement = Arrangement.Center,
@@ -569,7 +569,7 @@ private fun HostMode(
                 Spacer(Modifier.height(6.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(4.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     SelectionContainer { Text(generatedCode, fontFamily = FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(10.dp)) }

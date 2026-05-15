@@ -378,7 +378,7 @@ private fun ServerCard(
         ) {
             Surface(
                 modifier = Modifier.size(38.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(6.dp),
                 color = MaterialTheme.colorScheme.background
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -399,7 +399,7 @@ private fun ServerCard(
                     if (entry.isDefault) {
                         Spacer(Modifier.width(6.dp))
                         Surface(
-                            shape = RoundedCornerShape(4.dp),
+                            shape = RoundedCornerShape(2.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         ) {
                             Text(

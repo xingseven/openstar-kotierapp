@@ -43,7 +43,7 @@ fun AppDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 2.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
             tonalElevation = 0.dp,
@@ -72,7 +72,7 @@ fun AppDialog(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Column(
@@ -93,7 +93,7 @@ fun AppDialog(
                     Button(
                         onClick = onConfirm,
                         enabled = confirmEnabled,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(499.5.dp),
                         colors = if (destructive) {
                             ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error,

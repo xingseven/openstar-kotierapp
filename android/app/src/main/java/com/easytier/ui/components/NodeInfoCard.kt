@@ -28,7 +28,7 @@ fun NodeInfoCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
@@ -76,7 +76,7 @@ fun NodeInfoCard(
                     if (node.isLocal) {
                         Spacer(Modifier.width(6.dp))
                         Surface(
-                            shape = RoundedCornerShape(4.dp),
+                            shape = RoundedCornerShape(2.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         ) {
                             Text(

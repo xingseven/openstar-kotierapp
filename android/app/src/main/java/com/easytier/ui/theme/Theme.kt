@@ -64,11 +64,11 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val EasyTierShapes = Shapes(
-    extraSmall = RoundedCornerShape(14.dp),
-    small = RoundedCornerShape(18.dp),
-    medium = RoundedCornerShape(24.dp),
-    large = RoundedCornerShape(30.dp),
-    extraLarge = RoundedCornerShape(36.dp),
+    extraSmall = RoundedCornerShape(7.dp),
+    small = RoundedCornerShape(9.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(15.dp),
+    extraLarge = RoundedCornerShape(18.dp),
 )
 
 @Composable

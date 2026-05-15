@@ -313,7 +313,7 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(9.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp), content = content)
@@ -361,7 +361,7 @@ private fun ContributorItem(contributor: Contributor) {
                 .size(36.dp)
                 .background(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(9.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
