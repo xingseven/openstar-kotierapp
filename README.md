@@ -34,7 +34,6 @@
 - JSON 兼容主要面向 QtEasyTier 的配置导出格式
 - TOML 兼容主要面向 EasyTier 官方配置格式
 - TOML 导入优先覆盖网络名、密钥、DHCP/IPv4、监听地址、入口服务器、子网代理、路由、出口节点和主要 flags
-- 某些超出当前 Android 本地配置模型表达能力的细分字段，不会伪造不准确语义，而是尽量保留核心配置含义
 
 ## 技术栈
 
@@ -113,27 +112,7 @@ android/app/build/outputs/apk/release/kotier-v<version>-<versionCode>-release.ap
 python .\install_apk.py .\android\app\build\outputs\apk\release\kotier-v4.2.44-4062-release.apk
 ```
 
-或直接：
-
-```powershell
-.\install_apk.bat .\android\app\build\outputs\apk\release\kotier-v4.2.44-4062-release.apk
-```
-
 脚本会优先自动寻找本机 Android SDK 下的 `adb.exe`。
-
-## GitHub 发版
-
-当前仓库使用 `.github/workflows/android-release.yml` 进行 Android 发版：
-
-- 推送 `v*` 标签时，自动构建 release APK 并创建 GitHub Release
-- 手动触发 `workflow_dispatch` 时，构建 release APK
-
-示例：
-
-```powershell
-git tag v4.2.44
-git push origin v4.2.44
-```
 
 ## 原生库依赖
 
@@ -149,9 +128,3 @@ git push origin v4.2.44
 - 仓库地址：`https://github.com/xingseven/openstar-kotierapp`
 - 版本记录：[版本记录.md](/F:/1python/xiangmu/openstar-kotierapp/版本记录.md)
 - Android 前端说明：[FRONTEND_DEVELOPMENT_GUIDE.md](/F:/1python/xiangmu/openstar-kotierapp/android/FRONTEND_DEVELOPMENT_GUIDE.md)
-
-## 当前边界
-
-- 当前仓库仍以 Android 客户端为中心，不是 EasyTier 官方全平台 GUI 仓库的镜像
-- 配置导入已兼容 Qt JSON 和 EasyTier TOML，但并不等于三套工程内部 JSON 模型完全一致
-- 某些上游高级配置字段在 Android 侧仍可能只保留核心语义，而不是做到逐字段无损回放
