@@ -7,14 +7,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-private val LightPrimary = Color(0xFF1868F5)
-private val LightSecondary = Color(0xFF7FAEFF)
-private val LightBackground = Color.White
-private val LightSurface = Color(0xF2FFFFFF)
-private val LightSurfaceVariant = Color(0xE6F0FF)
-private val LightText = Color(0xFF16314F)
-private val LightMutedText = Color(0xFF607A99)
-private val LightOutline = Color(0xFFB8CBE5)
+private val LightPrimary = Color(0xFF1D63D8)
+private val LightSecondary = Color(0xFF6F8FC4)
+private val LightBackground = Color(0xFFF2F3F5)
+private val LightSurface = Color(0xFFFBFCFD)
+private val LightSurfaceVariant = Color(0xFFF6F7F9)
+private val LightText = Color(0xFF1E2732)
+private val LightMutedText = Color(0xFF697687)
+private val LightOutline = Color(0xFFDDE3EA)
 
 private val DarkPrimary = Color(0xFF8FB8FF)
 private val DarkSecondary = Color(0xFF4E7BE5)
@@ -28,12 +28,12 @@ private val DarkOutline = Color(0xFF3D5373)
 private val LightColorScheme = lightColorScheme(
     primary = LightPrimary,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD9E7FF),
-    onPrimaryContainer = Color(0xFF0A2D72),
+    primaryContainer = Color(0xFFE3EBF8),
+    onPrimaryContainer = Color(0xFF15366A),
     secondary = LightSecondary,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE3EDFF),
-    onSecondaryContainer = Color(0xFF173A7B),
+    secondaryContainer = Color(0xFFE8EDF5),
+    onSecondaryContainer = Color(0xFF243E65),
     background = LightBackground,
     onBackground = LightText,
     surface = LightSurface,
@@ -41,7 +41,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightMutedText,
     outline = LightOutline,
-    surfaceTint = Color.White,
+    surfaceTint = Color.Transparent,
 )
 
 private val DarkColorScheme = darkColorScheme(
