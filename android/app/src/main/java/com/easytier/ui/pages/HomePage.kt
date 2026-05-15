@@ -1,6 +1,7 @@
 package com.easytier.ui.pages
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
@@ -115,21 +115,24 @@ fun HomePage() {
                     .matchParentSize()
                     .background(MaterialTheme.colorScheme.background)
             )
-            Box(
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .align(Alignment.TopCenter)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                                Color.Transparent,
-                            )
-                        )
-                    )
-            )
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+                        Color.White
+                    } else {
+                        Color.White.copy(alpha = 0.18f)
+                    }
+                ),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
                 if (showLogPage) {
                     LogPage(onBack = { showLogPage = false })
                 } else {
