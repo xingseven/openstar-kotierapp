@@ -51,6 +51,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import com.easytier.backend.csvToMutableStringList
 import com.easytier.backend.collectProxyCidrsFromJson
 import com.easytier.data.NetworkConfig
+import com.easytier.data.NetworkConfigImport
 import com.easytier.ui.components.AppDialog
 import com.easytier.ui.components.CompactTopBar
 import com.easytier.data.NodeInfo
@@ -178,8 +179,7 @@ fun NetworkConfigPage() {
             }
             val jsonStr = inputStream.bufferedReader().use { it.readText() }
 
-            val jsonObj = org.json.JSONObject(jsonStr)
-            val importedConfig = NetworkConfig.fromJson(jsonObj)
+            val importedConfig = NetworkConfigImport.fromText(jsonStr)
 
             importedConfig.instanceName = NetworkConfig.generateInstanceName()
             importedConfig.isRunning = false
@@ -392,7 +392,7 @@ fun NetworkConfigPage() {
         topBar = {
             CompactTopBar(title = "网络配置") {
                     IconButton(onClick = { addConfig() }) { AppIcon(AppIcons.Add, contentDescription = "新建配置") }
-                    IconButton(onClick = { importFileLauncher.launch(arrayOf("application/json")) }) { AppIcon(AppIcons.Login, contentDescription = "导入配置") }
+                    IconButton(onClick = { importFileLauncher.launch(arrayOf("application/json", "text/plain", "application/toml", "text/x-toml", "*/*")) }) { AppIcon(AppIcons.Login, contentDescription = "导入配置") }
                     IconButton(onClick = { deleteConfig() }) { AppIcon(AppIcons.Delete, contentDescription = "删除配置") }
                     IconButton(onClick = {
                         saveCurrentConfig()

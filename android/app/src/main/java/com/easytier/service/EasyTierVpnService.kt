@@ -12,24 +12,41 @@ class EasyTierVpnService : VpnService() {
     private var pfd: android.os.ParcelFileDescriptor? = null
     private var currentInstanceName: String? = null
     private var tunAttached = false
+    private var resourcesReleased = false
 
     companion object {
         private const val TAG = "EasyTierVpn"
         const val ACTION_STOP = "com.easytier.service.action.STOP_VPN"
+        @Volatile
+        private var self: EasyTierVpnService? = null
+        @Volatile
+        private var runningInstanceName: String? = null
         private val DISCOVERY_ROUTES = listOf(
             "224.0.0.251/32",
             "224.0.0.252/32",
             "239.255.255.250/32",
             "255.255.255.255/32"
         )
+
+        fun getRunningInstanceName(): String? = runningInstanceName
+
+        fun requestStop(reason: String = "external-request"): Boolean {
+            val service = self ?: return false
+            service.stopFromController(reason)
+            return true
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        self = this
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             Log.i(TAG, "received explicit stop request")
             LogService.info("收到停止 VPN 服务请求", source = TAG)
-            job?.cancel()
-            stopSelf()  // 不带 startId，强制停止而不等待之前的请求
+            stopFromController("explicit-stop")
             return START_NOT_STICKY
         }
 
@@ -37,6 +54,8 @@ class EasyTierVpnService : VpnService() {
             Log.w(TAG, "missing instance_name"); stopSelf(startId); return START_NOT_STICKY
         }
         currentInstanceName = instanceName
+        runningInstanceName = instanceName
+        resourcesReleased = false
         val ipv4 = intent.getStringExtra("ipv4") ?: ""
         val prefix = intent.getIntExtra("prefix", 24)
         val extraRoutes = intent.getStringArrayListExtra("routes") ?: arrayListOf()
@@ -92,7 +111,7 @@ class EasyTierVpnService : VpnService() {
                 }
                 pfd = pfdResult
 
-                val fd = pfdResult.detachFd()
+                val fd = pfdResult.fd
                 val result = EasyTierJNI.setTunFd(instanceName, fd)
                 Log.i(TAG, "setTunFd result=$result")
                 if (result == 0) {
@@ -103,12 +122,15 @@ class EasyTierVpnService : VpnService() {
                     val errorMessage = EasyTierJNI.getLastError().orEmpty()
                     Log.e(TAG, "setTunFd failed: $errorMessage")
                     LogService.error("setTunFd 失败: code=$result error=$errorMessage", source = TAG)
+                    releaseVpnResources("attach-failed")
                     stopSelf(startId)
                     return@launch
                 }
 
                 // 保持服务运行
                 while (isActive) delay(5000)
+            } catch (e: CancellationException) {
+                Log.i(TAG, "VPN coroutine cancelled")
             } catch (e: SecurityException) {
                 Log.e(TAG, "VPN permission denied", e)
                 LogService.error("VPN 权限被拒绝: ${e.message}", source = TAG)
@@ -126,20 +148,43 @@ class EasyTierVpnService : VpnService() {
         Log.w(TAG, "VPN revoked by system")
         LogService.warn("VPN 被系统关闭，准备停止网络实例", source = TAG)
         EasyTierService.handleVpnRevoked(currentInstanceName)
+        releaseVpnResources("revoke")
+        self = null
         stopSelf()
         super.onRevoke()
     }
 
     override fun onDestroy() {
-        detachTunFromBackend()
-        EasyTierService.notifyVpnStopped(currentInstanceName)
-        super.onDestroy()
         job?.cancel()
-        try { pfd?.close() } catch (e: Exception) {}
-        pfd = null
-        currentInstanceName = null
+        releaseVpnResources("destroy")
+        self = null
+        super.onDestroy()
         Log.d(TAG, "VPN stopped")
         LogService.info("VPN 已停止", source = TAG)
+    }
+
+    private fun stopFromController(reason: String) {
+        job?.cancel()
+        releaseVpnResources(reason)
+        stopSelf()
+    }
+
+    private fun releaseVpnResources(reason: String) {
+        if (resourcesReleased) {
+            return
+        }
+        resourcesReleased = true
+        LogService.info("开始释放 VPN 资源: reason=$reason instance=${currentInstanceName ?: "unknown"}", source = TAG)
+        detachTunFromBackend()
+        EasyTierService.notifyVpnStopped(currentInstanceName)
+        try {
+            pfd?.close()
+        } catch (e: Exception) {
+            LogService.warn("关闭 VPN PFD 失败: ${e.message}", source = TAG)
+        }
+        pfd = null
+        runningInstanceName = null
+        currentInstanceName = null
     }
 
     private fun detachTunFromBackend() {

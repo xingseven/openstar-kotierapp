@@ -129,9 +129,16 @@ object EasyTierService {
         if (!initialized) return EasyTierResult.fail("not initialized")
 
         return try {
+            val context = appContext
+            val runningVpnInstance = EasyTierVpnService.getRunningInstanceName()
+            val shouldStopVpnFirst = runningVpnInstance == instanceName || _runtimeState.value.activeVpnInstanceName == instanceName
+            if (shouldStopVpnFirst && context != null) {
+                LogService.info("停止网络前先释放 VPN: $instanceName", source = TAG)
+                stopVpnServiceInternal(context, instanceName, force = true)
+                delay(300)
+            }
             val result = backend.stopNetwork(instanceName)
             if (result.success) {
-                val context = appContext
                 if (context != null) {
                     LogService.info("准备停止 VPN 服务: $instanceName", source = TAG)
                     // 无论 activeVpnInstanceName 是否匹配都尝试停止，防止 App 重启后状态丢失
@@ -346,11 +353,15 @@ object EasyTierService {
                 return
             }
         }
-        val existing = adapter
-        val requested = if (existing != null) {
-            existing.stopVpnService()
+        val requested = if (EasyTierVpnService.requestStop("service-internal")) {
+            true
         } else {
-            context.stopService(Intent(context, EasyTierVpnService::class.java))
+            val existing = adapter
+            if (existing != null) {
+                existing.stopVpnService()
+            } else {
+                context.stopService(Intent(context, EasyTierVpnService::class.java))
+            }
         }
         LogService.info("已发送停止 VPN 服务请求: instance=${instanceName ?: "active"}, requested=$requested, force=$force", source = TAG)
         if (!requested) {
