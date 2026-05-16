@@ -458,7 +458,8 @@ private fun DashboardScreen(
     val totalTx = nodes.sumOf { it.txBytes }
 
     if (showAddNodeDialog) {
-        var deviceName by remember { mutableStateOf("") }
+        var configLabel by remember { mutableStateOf("") }
+        var hostname by remember { mutableStateOf("") }
         var networkName by remember { mutableStateOf("") }
         var networkSecret by remember { mutableStateOf("") }
         var selectedDeviceType by remember { mutableStateOf("desktop") }
@@ -469,6 +470,8 @@ private fun DashboardScreen(
             confirmText = "添加",
             confirmEnabled = networkName.isNotBlank() && networkSecret.isNotBlank(),
             onConfirm = {
+                val label = configLabel.trim()
+                val host = hostname.trim().ifBlank { label }
                 val network = networkName.trim()
                 val secret = networkSecret.trim()
                 if (network.isBlank() || secret.isBlank()) {
@@ -476,8 +479,8 @@ private fun DashboardScreen(
                 }
                 val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                 val newConfig = NetworkConfig().apply {
-                    hostname = deviceName.trim()
-                    networkLabel = deviceName.trim().ifBlank { network }
+                    hostname = host
+                    networkLabel = label.ifBlank { host.ifBlank { network } }
                     deviceType = selectedDeviceType
                     networkName = network
                     networkSecret = secret
@@ -527,9 +530,17 @@ private fun DashboardScreen(
                 }
             }
             OutlinedTextField(
-                value = deviceName,
-                onValueChange = { deviceName = it },
-                label = { Text("设备名称") },
+                value = configLabel,
+                onValueChange = { configLabel = it },
+                label = { Text("配置标签") },
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                modifier = compactFieldModifier,
+            )
+            OutlinedTextField(
+                value = hostname,
+                onValueChange = { hostname = it },
+                label = { Text("本机主机名") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
@@ -545,7 +556,7 @@ private fun DashboardScreen(
             OutlinedTextField(
                 value = networkSecret,
                 onValueChange = { networkSecret = it },
-                label = { Text("网络密码") },
+                label = { Text("网络密钥") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
