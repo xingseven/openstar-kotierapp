@@ -113,14 +113,14 @@ import kotlinx.coroutines.launch
 
 data class NavItem(
     val label: String,
-    val icon: ImageVector,
+    val iconRes: Int,
 )
 
 private val navItems = listOf(
-    NavItem("首页", Icons.Rounded.Home),
-    NavItem("网络", Icons.Rounded.Wifi),
-    NavItem("服务器", Icons.Rounded.Dns),
-    NavItem("我的", Icons.Rounded.Person),
+    NavItem("首页", R.drawable.ic_nav_network),
+    NavItem("网络", R.drawable.ic_nav_online),
+    NavItem("服务器", R.drawable.ic_nav_server),
+    NavItem("我的", R.drawable.ic_nav_setup),
 )
 
 @Composable
@@ -199,7 +199,7 @@ fun HomePage() {
                                 verticalArrangement = Arrangement.Center,
                             ) {
                                 Icon(
-                                    imageVector = item.icon,
+                                    painter = painterResource(id = item.iconRes),
                                     contentDescription = item.label,
                                     tint = tint,
                                     modifier = Modifier.size(20.dp),
@@ -656,7 +656,7 @@ private fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "内网穿透",
+                            text = "Kotier内网穿透",
                             color = Color.White,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
@@ -665,7 +665,7 @@ private fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "站内互联和设备在线率实时监控",
+                        text = "组网互联和设备在线率实时监控",
                         color = Color.White.copy(alpha = 0.86f),
                         fontSize = 12.sp,
                     )
