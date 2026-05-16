@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -148,16 +149,15 @@ fun HomePage() {
         val mainTab = !showNetworkPage && !showLogPage && selectedIndex == 0
         if (mainTab) {
             activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
-            activity.window.navigationBarColor = Color.White.toArgb()
             controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = true
         } else {
             activity.window.statusBarColor = Color.Transparent.toArgb()
-            activity.window.navigationBarColor = background.toArgb()
             val lightBars = background.luminance() > 0.5f
             controller.isAppearanceLightStatusBars = lightBars
-            controller.isAppearanceLightNavigationBars = lightBars
         }
+        // 底部导航栏所有页面统一白色
+        activity.window.navigationBarColor = Color.White.toArgb()
+        controller.isAppearanceLightNavigationBars = true
     }
 
     Scaffold(
@@ -236,11 +236,12 @@ fun HomePage() {
                             onOpenNetwork = { showNetworkPage = true },
                             onOpenOneClick = { selectedIndex = 1 },
                             onOpenServers = { selectedIndex = 2 },
+                            onOpenImportExport = { showNetworkPage = true },
                         )
 
-                        1 -> OneClickPage()
-                        2 -> ServersPage()
-                        3 -> SettingsPage(onNavigateToLog = { showLogPage = true })
+                        1 -> Column(Modifier.statusBarsPadding()) { OneClickPage() }
+                        2 -> Column(Modifier.statusBarsPadding()) { ServersPage() }
+                        3 -> Column(Modifier.statusBarsPadding()) { SettingsPage(onNavigateToLog = { showLogPage = true }) }
                     }
                 }
             }
@@ -254,6 +255,7 @@ private fun DashboardScreen(
     onOpenNetwork: () -> Unit,
     onOpenOneClick: () -> Unit,
     onOpenServers: () -> Unit,
+    onOpenImportExport: () -> Unit,
 ) {
     val context = LocalContext.current as Activity
     val repo = LocalSettingsRepository.current
@@ -890,6 +892,11 @@ private fun DashboardScreen(
                                 icon = Icons.Rounded.Dns,
                                 title = "节点管理",
                                 onClick = { showServerManagerDialog = true },
+                            )
+                            MetricActionItem(
+                                icon = Icons.Rounded.FileUpload,
+                                title = "导入导出",
+                                onClick = onOpenImportExport,
                             )
                         }
                     }
