@@ -117,8 +117,8 @@ data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem("首页", R.drawable.ic_nav_online),
-    NavItem("网络", R.drawable.ic_nav_network),
+    NavItem("首页", R.drawable.ic_nav_network),
+    NavItem("联机", R.drawable.ic_nav_online),
     NavItem("服务器", R.drawable.ic_nav_server),
     NavItem("我的", R.drawable.ic_nav_setup),
 )
@@ -126,17 +126,17 @@ private val navItems = listOf(
 @Composable
 fun HomePage() {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
-    var showOneClickPage by rememberSaveable { mutableStateOf(false) }
+    var showNetworkPage by rememberSaveable { mutableStateOf(false) }
     var showLogPage by remember { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
     val view = LocalView.current
     val background = MaterialTheme.colorScheme.background
-    val isDashboard = !showOneClickPage && !showLogPage && selectedIndex == 0
+    val isDashboard = !showNetworkPage && !showLogPage && selectedIndex == 0
 
-    BackHandler(enabled = showOneClickPage || showLogPage) {
+    BackHandler(enabled = showNetworkPage || showLogPage) {
         when {
             showLogPage -> showLogPage = false
-            showOneClickPage -> showOneClickPage = false
+            showNetworkPage -> showNetworkPage = false
         }
     }
 
@@ -178,7 +178,7 @@ fun HomePage() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     navItems.forEachIndexed { index, item ->
-                        val selected = !showOneClickPage && selectedIndex == index
+                        val selected = !showNetworkPage && selectedIndex == index
                         val tint = if (selected) Color(0xFF1F6FFF) else Color(0xFF98A2B3)
                         Box(
                             modifier = Modifier
@@ -188,7 +188,7 @@ fun HomePage() {
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                 ) {
-                                    showOneClickPage = false
+                                    showNetworkPage = false
                                     showLogPage = false
                                     selectedIndex = index
                                 },
@@ -226,16 +226,16 @@ fun HomePage() {
         ) {
             when {
                 showLogPage -> LogPage(onBack = { showLogPage = false })
-                showOneClickPage -> OneClickPage()
+                showNetworkPage -> NetworkConfigPage()
                 else -> stateHolder.SaveableStateProvider("tab_$selectedIndex") {
                     when (selectedIndex) {
                         0 -> DashboardScreen(
-                            onOpenNetwork = { selectedIndex = 1 },
-                            onOpenOneClick = { showOneClickPage = true },
+                            onOpenNetwork = { showNetworkPage = true },
+                            onOpenOneClick = { selectedIndex = 1 },
                             onOpenServers = { selectedIndex = 2 },
                         )
 
-                        1 -> NetworkConfigPage()
+                        1 -> OneClickPage()
                         2 -> ServersPage()
                         3 -> SettingsPage(onNavigateToLog = { showLogPage = true })
                     }
