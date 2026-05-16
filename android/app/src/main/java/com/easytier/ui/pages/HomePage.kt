@@ -718,14 +718,17 @@ private fun DashboardScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f),
-                                contentAlignment = Alignment.Center,
+                                    .weight(1f)
+                                    .padding(top = (-92).dp, start = 2.dp, end = (-8).dp),
+                                contentAlignment = Alignment.TopCenter,
                             ) {
                                 Image(
                                     painter = painterResource(id = R.drawable.hero_beijing),
                                     contentDescription = "网络插画",
                                     contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(190.dp),
                                 )
                             }
                             Card(
