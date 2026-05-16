@@ -493,7 +493,24 @@ private fun DashboardScreen(
                     updatedConfigs.add(newConfig)
                 }
                 repo.saveNetworkConfigs(updatedConfigs)
-                configs = updatedConfigs
+
+                // 添加后做一次回读校验，避免旧数据或并发写入导致关键字段被清空。
+                val reloadedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
+                val reloadedIndex = reloadedConfigs.indexOfFirst { it.instanceName == newConfig.instanceName }
+                if (reloadedIndex >= 0) {
+                    val reloaded = reloadedConfigs[reloadedIndex]
+                    if (reloaded.hostname.isBlank() || reloaded.networkName.isBlank() || reloaded.networkSecret.isBlank()) {
+                        reloadedConfigs[reloadedIndex] = reloaded.apply {
+                            networkLabel = label.ifBlank { host.ifBlank { network } }
+                            hostname = host
+                            networkName = network
+                            networkSecret = secret
+                            deviceType = selectedDeviceType
+                        }
+                        repo.saveNetworkConfigs(reloadedConfigs)
+                    }
+                }
+                configs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
 
                 showAddNodeDialog = false
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
