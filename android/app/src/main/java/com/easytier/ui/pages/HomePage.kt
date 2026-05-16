@@ -624,7 +624,39 @@ private fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    if (configs.isEmpty()) {
+                        Text(
+                            text = "暂无配置，点击右上角添加节点",
+                            color = Color(0xFF98A2B3),
+                            fontSize = 12.sp,
+                        )
+                    } else {
+                        configs.forEachIndexed { index, cfg ->
+                            val isCfgRunning = runtimeState.runningInstances.contains(cfg.instanceName)
+                            ConfigRow(
+                                config = cfg,
+                                isRunning = isCfgRunning,
+                                onStart = { startConfig(cfg) },
+                                enabled = !isNodeSwitching,
+                            )
+                            if (index < configs.lastIndex) {
+                                HorizontalDivider(color = Color(0xFFEFF2F6))
+                            }
+                        }
+                    }
+
                     if (isRunning) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            color = Color(0xFFEFF2F6),
+                        )
+                        Text(
+                            text = "在线节点",
+                            color = Color(0xFF98A2B3),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
                         if (nodes.isEmpty()) {
                             Text(
                                 text = "等待节点数据...",
@@ -635,26 +667,6 @@ private fun DashboardScreen(
                             nodes.forEachIndexed { index, item ->
                                 DeviceRow(item)
                                 if (index < nodes.lastIndex) {
-                                    HorizontalDivider(color = Color(0xFFEFF2F6))
-                                }
-                            }
-                        }
-                    } else {
-                        if (configs.isEmpty()) {
-                            Text(
-                                text = "暂无配置，点击右上角添加节点",
-                                color = Color(0xFF98A2B3),
-                                fontSize = 12.sp,
-                            )
-                        } else {
-                            configs.forEachIndexed { index, cfg ->
-                                val isCfgRunning = runtimeState.runningInstances.contains(cfg.instanceName)
-                                ConfigRow(
-                                    config = cfg,
-                                    isRunning = isCfgRunning,
-                                    onStart = { startConfig(cfg) },
-                                )
-                                if (index < configs.lastIndex) {
                                     HorizontalDivider(color = Color(0xFFEFF2F6))
                                 }
                             }
@@ -775,6 +787,7 @@ private fun ConfigRow(
     config: NetworkConfig,
     isRunning: Boolean,
     onStart: () -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -816,7 +829,7 @@ private fun ConfigRow(
         }
         Button(
             onClick = onStart,
-            enabled = true,
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isRunning) Color(0xFFEF4444) else Color(0xFF1F6FFF),
