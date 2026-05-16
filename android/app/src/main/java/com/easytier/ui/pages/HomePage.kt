@@ -493,24 +493,7 @@ private fun DashboardScreen(
                     updatedConfigs.add(newConfig)
                 }
                 repo.saveNetworkConfigs(updatedConfigs)
-
-                // 添加后做一次回读校验，避免旧数据或并发写入导致关键字段被清空。
-                val reloadedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
-                val reloadedIndex = reloadedConfigs.indexOfFirst { it.instanceName == newConfig.instanceName }
-                if (reloadedIndex >= 0) {
-                    val reloaded = reloadedConfigs[reloadedIndex]
-                    if (reloaded.hostname.isBlank() || reloaded.networkName.isBlank() || reloaded.networkSecret.isBlank()) {
-                        reloadedConfigs[reloadedIndex] = reloaded.apply {
-                            networkLabel = label.ifBlank { host.ifBlank { network } }
-                            hostname = host
-                            networkName = network
-                            networkSecret = secret
-                            deviceType = selectedDeviceType
-                        }
-                        repo.saveNetworkConfigs(reloadedConfigs)
-                    }
-                }
-                configs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
+                configs = updatedConfigs
 
                 showAddNodeDialog = false
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
@@ -592,20 +575,20 @@ private fun DashboardScreen(
         } else {
             var showAdvanced by remember { mutableStateOf(false) }
             var secretVisible by remember { mutableStateOf(false) }
-            var editLabel by remember { mutableStateOf(cfg.networkLabel) }
-            var editHostname by remember { mutableStateOf(cfg.hostname) }
-            var editName by remember { mutableStateOf(cfg.networkName) }
-            var editSecret by remember { mutableStateOf(cfg.networkSecret) }
-            var editDhcp by remember { mutableStateOf(cfg.dhcp) }
-            var editIpv4 by remember { mutableStateOf(cfg.ipv4) }
-            var editEncryption by remember { mutableStateOf(cfg.enableEncryption) }
-            var editDisableP2p by remember { mutableStateOf(cfg.disableP2p) }
-            var editLatencyFirst by remember { mutableStateOf(cfg.latencyFirst) }
-            var editPrivateMode by remember { mutableStateOf(cfg.privateMode) }
-            var editNoTun by remember { mutableStateOf(cfg.noTun) }
-            var editDisableIpv6 by remember { mutableStateOf(cfg.disableIpv6) }
-            var editDisableUdpHp by remember { mutableStateOf(cfg.disableUdpHolePunching) }
-            var editDisableTcpHp by remember { mutableStateOf(cfg.disableTcpHolePunching) }
+            var editLabel by remember(cfg.instanceName, cfg.networkLabel) { mutableStateOf(cfg.networkLabel) }
+            var editHostname by remember(cfg.instanceName, cfg.hostname) { mutableStateOf(cfg.hostname) }
+            var editName by remember(cfg.instanceName, cfg.networkName) { mutableStateOf(cfg.networkName) }
+            var editSecret by remember(cfg.instanceName, cfg.networkSecret) { mutableStateOf(cfg.networkSecret) }
+            var editDhcp by remember(cfg.instanceName, cfg.dhcp) { mutableStateOf(cfg.dhcp) }
+            var editIpv4 by remember(cfg.instanceName, cfg.ipv4) { mutableStateOf(cfg.ipv4) }
+            var editEncryption by remember(cfg.instanceName, cfg.enableEncryption) { mutableStateOf(cfg.enableEncryption) }
+            var editDisableP2p by remember(cfg.instanceName, cfg.disableP2p) { mutableStateOf(cfg.disableP2p) }
+            var editLatencyFirst by remember(cfg.instanceName, cfg.latencyFirst) { mutableStateOf(cfg.latencyFirst) }
+            var editPrivateMode by remember(cfg.instanceName, cfg.privateMode) { mutableStateOf(cfg.privateMode) }
+            var editNoTun by remember(cfg.instanceName, cfg.noTun) { mutableStateOf(cfg.noTun) }
+            var editDisableIpv6 by remember(cfg.instanceName, cfg.disableIpv6) { mutableStateOf(cfg.disableIpv6) }
+            var editDisableUdpHp by remember(cfg.instanceName, cfg.disableUdpHolePunching) { mutableStateOf(cfg.disableUdpHolePunching) }
+            var editDisableTcpHp by remember(cfg.instanceName, cfg.disableTcpHolePunching) { mutableStateOf(cfg.disableTcpHolePunching) }
 
             AppDialog(
                 title = "编辑配置",

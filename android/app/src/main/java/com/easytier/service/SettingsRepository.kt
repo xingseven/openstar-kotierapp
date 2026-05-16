@@ -100,7 +100,7 @@ class SettingsRepository(context: Context) {
     // ── 网络配置持久化 ──
 
     fun saveNetworkConfigs(jsonArray: JSONArray) {
-        prefs.edit().putString("network_configs", jsonArray.toString()).apply()
+        prefs.edit().putString("network_configs", jsonArray.toString()).commit()
     }
 
     fun saveNetworkConfigs(configs: List<NetworkConfig>) {
