@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-private val LightPrimary = Color(0xFF1D63D8)
+private val LightPrimary = Color(0xFF1F6FFF)
 private val LightSecondary = Color(0xFF6F8FC4)
 private val LightBackground = Color(0xFFF2F3F5)
 private val LightSurface = Color(0xFFFBFCFD)

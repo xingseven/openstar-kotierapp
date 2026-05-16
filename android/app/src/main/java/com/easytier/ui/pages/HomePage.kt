@@ -145,7 +145,7 @@ fun HomePage() {
     LaunchedEffect(selectedIndex, showNetworkPage, showLogPage, background, view) {
         val activity = view.context as? Activity ?: return@LaunchedEffect
         val controller = WindowCompat.getInsetsController(activity.window, view)
-        val mainTab = !showNetworkPage && !showLogPage
+        val mainTab = !showNetworkPage && !showLogPage && selectedIndex == 0
         if (mainTab) {
             activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
             activity.window.navigationBarColor = Color.White.toArgb()
@@ -454,7 +454,7 @@ private fun DashboardScreen(
         }
     }
 
-    // 网络配置弹窗（只读查看）
+    // 网络配置弹窗（可编辑）
     if (showNetworkConfigDialog) {
         val cfg = activeConfig
         if (cfg == null) {
@@ -462,12 +462,26 @@ private fun DashboardScreen(
         } else {
             var showAdvanced by remember { mutableStateOf(false) }
             var secretVisible by remember { mutableStateOf(false) }
+            var editLabel by remember { mutableStateOf(cfg.networkLabel) }
+            var editHostname by remember { mutableStateOf(cfg.hostname) }
+            var editName by remember { mutableStateOf(cfg.networkName) }
+            var editSecret by remember { mutableStateOf(cfg.networkSecret) }
+            var editDhcp by remember { mutableStateOf(cfg.dhcp) }
+            var editIpv4 by remember { mutableStateOf(cfg.ipv4) }
+            var editEncryption by remember { mutableStateOf(cfg.enableEncryption) }
+            var editDisableP2p by remember { mutableStateOf(cfg.disableP2p) }
+            var editLatencyFirst by remember { mutableStateOf(cfg.latencyFirst) }
+            var editPrivateMode by remember { mutableStateOf(cfg.privateMode) }
+            var editNoTun by remember { mutableStateOf(cfg.noTun) }
+            var editDisableIpv6 by remember { mutableStateOf(cfg.disableIpv6) }
+            var editDisableUdpHp by remember { mutableStateOf(cfg.disableUdpHolePunching) }
+            var editDisableTcpHp by remember { mutableStateOf(cfg.disableTcpHolePunching) }
 
             BasicAlertDialog(onDismissRequest = { showNetworkConfigDialog = false }) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
+                        .heightIn(max = 480.dp),
                     shape = RoundedCornerShape(14.dp),
                     color = Color.White,
                     tonalElevation = 0.dp,
@@ -487,54 +501,77 @@ private fun DashboardScreen(
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(Modifier.size(8.dp))
-                            Text("网络配置", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("编辑配置", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
 
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ConfigInfoRow("配置标签", cfg.networkLabel.ifBlank { "--" })
-                            ConfigInfoRow("本机主机名", cfg.hostname.ifBlank { "--" })
-                            ConfigInfoRow("网络名称", cfg.networkName.ifBlank { "--" })
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("网络密钥", color = Color(0xFF98A2B3), fontSize = 12.sp)
-                                Spacer(Modifier.weight(1f))
-                                Text(
-                                    if (secretVisible) cfg.networkSecret else "••••••••",
-                                    color = Color(0xFF111827),
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                IconButton(
-                                    onClick = { secretVisible = !secretVisible },
-                                    modifier = Modifier.size(24.dp),
-                                ) {
+                        OutlinedTextField(
+                            value = editLabel,
+                            onValueChange = { editLabel = it },
+                            label = { Text("配置标签") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = editHostname,
+                            onValueChange = { editHostname = it },
+                            label = { Text("本机主机名") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = editName,
+                            onValueChange = { editName = it },
+                            label = { Text("网络名称") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = editSecret,
+                            onValueChange = { editSecret = it },
+                            label = { Text("网络密钥") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = if (secretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { secretVisible = !secretVisible }, modifier = Modifier.size(24.dp)) {
                                     Icon(
                                         if (secretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                     )
                                 }
-                            }
-                            ConfigInfoRow("DHCP 自动分配", if (cfg.dhcp) "是" else "否")
-                            if (!cfg.dhcp && cfg.ipv4.isNotBlank()) {
-                                ConfigInfoRow("静态 IPv4", cfg.ipv4)
-                            }
+                            },
+                        )
+
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("DHCP 自动分配", color = Color(0xFF111827), fontSize = 13.sp)
+                            Spacer(Modifier.weight(1f))
+                            Switch(checked = editDhcp, onCheckedChange = { editDhcp = it })
+                        }
+                        if (!editDhcp) {
+                            OutlinedTextField(
+                                value = editIpv4,
+                                onValueChange = { editIpv4 = it },
+                                label = { Text("静态 IPv4") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
 
                         HorizontalDivider(color = Color(0xFFEFF2F6))
                         TextButton(onClick = { showAdvanced = !showAdvanced }) {
                             Text(if (showAdvanced) "收起详情" else "展开详情", fontSize = 13.sp)
                         }
-                        AnimatedVisibility(visible = showAdvanced) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                ReadOnlySwitchRow("启用加密", cfg.enableEncryption)
-                                ReadOnlySwitchRow("禁用 P2P", cfg.disableP2p)
-                                ReadOnlySwitchRow("低延迟优先", cfg.latencyFirst)
-                                ReadOnlySwitchRow("私有模式", cfg.privateMode)
-                                ReadOnlySwitchRow("无 TUN 模式", cfg.noTun)
-                                ReadOnlySwitchRow("禁用 IPv6", cfg.disableIpv6)
-                                ReadOnlySwitchRow("禁用 UDP 打洞", cfg.disableUdpHolePunching)
-                                ReadOnlySwitchRow("禁用 TCP 打洞", cfg.disableTcpHolePunching)
+                        if (showAdvanced) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                SwitchRow("启用加密", editEncryption) { editEncryption = it }
+                                SwitchRow("禁用 P2P", editDisableP2p) { editDisableP2p = it }
+                                SwitchRow("低延迟优先", editLatencyFirst) { editLatencyFirst = it }
+                                SwitchRow("私有模式", editPrivateMode) { editPrivateMode = it }
+                                SwitchRow("无 TUN 模式", editNoTun) { editNoTun = it }
+                                SwitchRow("禁用 IPv6", editDisableIpv6) { editDisableIpv6 = it }
+                                SwitchRow("禁用 UDP 打洞", editDisableUdpHp) { editDisableUdpHp = it }
+                                SwitchRow("禁用 TCP 打洞", editDisableTcpHp) { editDisableTcpHp = it }
                             }
                         }
 
@@ -543,7 +580,37 @@ private fun DashboardScreen(
                             horizontalArrangement = Arrangement.End,
                         ) {
                             TextButton(onClick = { showNetworkConfigDialog = false }) {
-                                Text("关闭")
+                                Text("取消")
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                                    val idx = updatedConfigs.indexOfFirst { it.instanceName == cfg.instanceName }
+                                    if (idx >= 0) {
+                                        updatedConfigs[idx] = updatedConfigs[idx].apply {
+                                            networkLabel = editLabel
+                                            hostname = editHostname
+                                            networkName = editName
+                                            networkSecret = editSecret
+                                            dhcp = editDhcp
+                                            ipv4 = editIpv4
+                                            enableEncryption = editEncryption
+                                            disableP2p = editDisableP2p
+                                            latencyFirst = editLatencyFirst
+                                            privateMode = editPrivateMode
+                                            noTun = editNoTun
+                                            disableIpv6 = editDisableIpv6
+                                            disableUdpHolePunching = editDisableUdpHp
+                                            disableTcpHolePunching = editDisableTcpHp
+                                        }
+                                        repo.saveNetworkConfigs(updatedConfigs)
+                                        configs = updatedConfigs
+                                    }
+                                    showNetworkConfigDialog = false
+                                },
+                            ) {
+                                Text("保存")
                             }
                         }
                     }
