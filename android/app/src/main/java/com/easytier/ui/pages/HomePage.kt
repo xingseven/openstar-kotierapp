@@ -265,7 +265,7 @@ fun HomePage() {
             color = background,
         ) {
             when {
-                showLogPage -> LogPage(onBack = { showLogPage = false })
+                showLogPage -> Column(Modifier.statusBarsPadding()) { LogPage(onBack = { showLogPage = false }) }
                 else -> stateHolder.SaveableStateProvider("tab_$selectedIndex") {
                     when (selectedIndex) {
                         0 -> DashboardScreen(

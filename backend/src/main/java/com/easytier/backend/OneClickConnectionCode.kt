@@ -84,8 +84,9 @@ fun encodeConnectionCode(networkId: String, password: String): String {
         return ""
     }
 
-    val encodedNetworkId = base32Encode(networkIdData)
-    val encodedPassword = base32Encode(passwordData)
+    // Qt 端当前仍使用旧字母表编码联机码，Android 房主也按同一套生成，避免 PC 房客侧判“联机码错误”。
+    val encodedNetworkId = base32Encode(networkIdData, LEGACY_BASE32)
+    val encodedPassword = base32Encode(passwordData, LEGACY_BASE32)
     if (encodedNetworkId.length != 12 || encodedPassword.length != 13) {
         return ""
     }
