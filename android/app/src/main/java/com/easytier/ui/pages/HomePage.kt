@@ -308,6 +308,11 @@ private fun DashboardScreen(
     var uploadHistory by remember { mutableStateOf(List(30) { 0f }) }
     var currentDownloadRate by remember { mutableStateOf(0f) }
     var currentUploadRate by remember { mutableStateOf(0f) }
+    var addConfigLabel by rememberSaveable { mutableStateOf("") }
+    var addHostname by rememberSaveable { mutableStateOf("") }
+    var addNetworkName by rememberSaveable { mutableStateOf("") }
+    var addNetworkSecret by rememberSaveable { mutableStateOf("") }
+    var addSelectedDeviceType by rememberSaveable { mutableStateOf("desktop") }
 
     val activeConfig = remember(configs, runtimeState.runningInstances) {
         val runningName = runtimeState.runningInstances.firstOrNull()
@@ -467,30 +472,38 @@ private fun DashboardScreen(
     val totalTx = nodes.sumOf { it.txBytes }
 
     if (showAddNodeDialog) {
-        var configLabel by remember { mutableStateOf("") }
-        var hostname by remember { mutableStateOf("") }
-        var networkName by remember { mutableStateOf("") }
-        var networkSecret by remember { mutableStateOf("") }
-        var selectedDeviceType by remember { mutableStateOf("desktop") }
-
         AppDialog(
             title = "添加节点",
-            onDismissRequest = { showAddNodeDialog = false },
+            onDismissRequest = {
+                LogService.info(
+                    "关闭添加节点弹窗: label=$addConfigLabel, host=$addHostname, network=$addNetworkName, secretLen=${addNetworkSecret.length}, device=$addSelectedDeviceType",
+                    source = "HomePage"
+                )
+                showAddNodeDialog = false
+            },
             confirmText = "添加",
-            confirmEnabled = networkName.isNotBlank() && networkSecret.isNotBlank(),
+            confirmEnabled = addNetworkName.isNotBlank() && addNetworkSecret.isNotBlank(),
             onConfirm = {
-                val label = configLabel.trim()
-                val host = hostname.trim().ifBlank { label }
-                val network = networkName.trim()
-                val secret = networkSecret.trim()
+                LogService.info(
+                    "点击添加时表单快照: label=$addConfigLabel, host=$addHostname, network=$addNetworkName, secretLen=${addNetworkSecret.length}, device=$addSelectedDeviceType",
+                    source = "HomePage"
+                )
+                val label = addConfigLabel.trim()
+                val host = addHostname.trim().ifBlank { label }
+                val network = addNetworkName.trim()
+                val secret = addNetworkSecret.trim()
                 if (network.isBlank() || secret.isBlank()) {
+                    LogService.warn(
+                        "添加节点被拦截: label=$label, host=$host, network=$network, secretLen=${secret.length}",
+                        source = "HomePage"
+                    )
                     return@AppDialog
                 }
                 val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                 val newConfig = NetworkConfig().apply {
                     hostname = host
                     networkLabel = label.ifBlank { host.ifBlank { network } }
-                    deviceType = selectedDeviceType
+                    deviceType = addSelectedDeviceType
                     networkName = network
                     networkSecret = secret
                     this.isRunning = false
@@ -516,6 +529,11 @@ private fun DashboardScreen(
                     source = "HomePage"
                 )
 
+                addConfigLabel = ""
+                addHostname = ""
+                addNetworkName = ""
+                addNetworkSecret = ""
+                addSelectedDeviceType = "desktop"
                 showAddNodeDialog = false
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
             },
@@ -528,9 +546,9 @@ private fun DashboardScreen(
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(deviceIconOptions) { option ->
-                    val selected = selectedDeviceType == option.type
+                    val selected = addSelectedDeviceType == option.type
                     OutlinedButton(
-                        onClick = { selectedDeviceType = option.type },
+                        onClick = { addSelectedDeviceType = option.type },
                         shape = RoundedCornerShape(8.dp),
                         border = androidx.compose.foundation.BorderStroke(
                             width = if (selected) 1.5.dp else 1.dp,
@@ -551,32 +569,32 @@ private fun DashboardScreen(
                 }
             }
             OutlinedTextField(
-                value = configLabel,
-                onValueChange = { configLabel = it },
+                value = addConfigLabel,
+                onValueChange = { addConfigLabel = it },
                 label = { Text("配置标签") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
             )
             OutlinedTextField(
-                value = hostname,
-                onValueChange = { hostname = it },
+                value = addHostname,
+                onValueChange = { addHostname = it },
                 label = { Text("本机主机名") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
             )
             OutlinedTextField(
-                value = networkName,
-                onValueChange = { networkName = it },
+                value = addNetworkName,
+                onValueChange = { addNetworkName = it },
                 label = { Text("网络名称") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
             )
             OutlinedTextField(
-                value = networkSecret,
-                onValueChange = { networkSecret = it },
+                value = addNetworkSecret,
+                onValueChange = { addNetworkSecret = it },
                 label = { Text("网络密钥") },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
@@ -1077,7 +1095,15 @@ private fun DashboardScreen(
                             modifier = Modifier.clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) { showAddNodeDialog = true },
+                            ) {
+                                addConfigLabel = ""
+                                addHostname = ""
+                                addNetworkName = ""
+                                addNetworkSecret = ""
+                                addSelectedDeviceType = "desktop"
+                                LogService.info("打开添加节点弹窗并重置表单状态", source = "HomePage")
+                                showAddNodeDialog = true
+                            },
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Add,
