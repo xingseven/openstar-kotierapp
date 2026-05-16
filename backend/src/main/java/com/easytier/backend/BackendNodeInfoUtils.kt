@@ -44,15 +44,16 @@ fun collectNodeInfosFromJson(jsonStr: String, instanceName: String): List<NodeIn
             if (routes != null) {
                 for (i in 0 until routes.length()) {
                     val route = routes.optJSONObject(i) ?: continue
-                    val peerId = route.optLong("peer_id", -1L)
+                    val peerId = route.optLongCompat("peer_id", -1L)
                     if (peerId == myPeerId || peerId == -1L) continue
 
                     val ipv4Addr = route.optJSONObject("ipv4_addr")
                     val virtualIp = parseIpv4InetToString(ipv4Addr)
                     val hostname = route.optString("hostname", "")
-                    val routeLatencyMs = route.optInt("path_latency", 0)
-                        .takeIf { it > 0 }
-                        ?: route.optInt("path_latency_latency_first", 0).takeIf { it > 0 }
+                    val routeLatencyMs = route.readLatencyMs(
+                        msKeys = listOf("path_latency", "path_latency_latency_first", "latency_ms", "latency"),
+                        usKeys = listOf("path_latency_us", "path_latency_latency_first_us", "latency_us")
+                    )
 
                     val featureFlag = route.optJSONObject("feature_flag")
                     val isPublicServer = featureFlag?.optBoolean("is_public_server", false) ?: false
@@ -73,18 +74,22 @@ fun collectNodeInfosFromJson(jsonStr: String, instanceName: String): List<NodeIn
                                 val tunnel = conn.optJSONObject("tunnel")
                                 val tunnelType = tunnel?.optString("tunnel_type", "")?.uppercase().orEmpty()
 
-                                // 新版结构主要在 conn.stats；旧版仍可能在 conn 顶层字段。
+                                // 新版结构主要在 conn.stats；不同版本也可能在 conn_stats / tunnel.stats / conn 顶层字段。
                                 val stats = conn.optJSONObject("stats")
-                                val candidateRx = stats?.optLong("rx_bytes", conn.optLong("rx_bytes", 0))
-                                    ?: conn.optLong("rx_bytes", 0)
-                                val candidateTx = stats?.optLong("tx_bytes", conn.optLong("tx_bytes", 0))
-                                    ?: conn.optLong("tx_bytes", 0)
+                                    ?: conn.optJSONObject("conn_stats")
+                                    ?: tunnel?.optJSONObject("stats")
+                                val candidateRx = stats?.optLongCompat("rx_bytes", conn.optLongCompat("rx_bytes", 0))
+                                    ?: conn.optLongCompat("rx_bytes", 0)
+                                val candidateTx = stats?.optLongCompat("tx_bytes", conn.optLongCompat("tx_bytes", 0))
+                                    ?: conn.optLongCompat("tx_bytes", 0)
                                 val candidateLoss = conn.optDouble("loss_rate", 0.0)
-                                val candidateLatencyMs = stats
-                                    ?.optLong("latency_us", 0L)
-                                    ?.takeIf { it > 0L }
-                                    ?.let { (it / 1000L).toInt() }
-                                    ?: conn.optInt("latency_ms", 0)
+                                val candidateLatencyMs = stats?.readLatencyMs(
+                                    msKeys = listOf("latency_ms", "latency", "rtt_ms"),
+                                    usKeys = listOf("latency_us", "rtt_us")
+                                ) ?: conn.readLatencyMs(
+                                    msKeys = listOf("latency_ms", "latency", "rtt_ms"),
+                                    usKeys = listOf("latency_us", "rtt_us")
+                                )
 
                                 if (tunnelType.isNotBlank() && protocol.isBlank()) {
                                     protocol = tunnelType
@@ -99,9 +104,15 @@ fun collectNodeInfosFromJson(jsonStr: String, instanceName: String): List<NodeIn
                                 }
                             }
                         }
+                        if (connLatencyMs == 0) {
+                            connLatencyMs = peer.readLatencyMs(
+                                msKeys = listOf("latency_ms", "latency"),
+                                usKeys = listOf("latency_us")
+                            )
+                        }
                     }
 
-                    val latencyMs = routeLatencyMs ?: connLatencyMs
+                    val latencyMs = routeLatencyMs.takeIf { it > 0 } ?: connLatencyMs
 
                     nodes.add(
                         NodeInfo(
@@ -198,4 +209,25 @@ private fun parseIpv4InetToString(inet: JSONObject?): String {
 
 private fun intToIp(addr: Int): String {
     return "${(addr shr 24) and 0xFF}.${(addr shr 16) and 0xFF}.${(addr shr 8) and 0xFF}.${addr and 0xFF}"
+}
+
+private fun JSONObject.optLongCompat(key: String, default: Long = 0L): Long {
+    val raw = opt(key)
+    return when (raw) {
+        is Number -> raw.toLong()
+        is String -> raw.toLongOrNull() ?: default
+        else -> default
+    }
+}
+
+private fun JSONObject.readLatencyMs(msKeys: List<String>, usKeys: List<String>): Int {
+    msKeys.forEach { key ->
+        val value = optLongCompat(key, 0L)
+        if (value > 0L) return value.toInt()
+    }
+    usKeys.forEach { key ->
+        val valueUs = optLongCompat(key, 0L)
+        if (valueUs > 0L) return (valueUs / 1000L).coerceAtLeast(1L).toInt()
+    }
+    return 0
 }

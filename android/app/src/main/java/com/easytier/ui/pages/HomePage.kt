@@ -132,19 +132,38 @@ private val navItems = listOf(
 private data class DeviceIconOption(
     val type: String,
     val label: String,
-    val iconRes: Int,
+    val lightIconRes: Int,
+    val darkIconRes: Int,
 )
 
 private val deviceIconOptions = listOf(
-    DeviceIconOption(type = "phone", label = "手机", iconRes = R.drawable.phone),
-    DeviceIconOption(type = "desktop", label = "台式机", iconRes = R.drawable.computer),
-    DeviceIconOption(type = "laptop", label = "笔记本", iconRes = R.drawable.laptop),
-    DeviceIconOption(type = "server", label = "服务器", iconRes = R.drawable.server),
-    DeviceIconOption(type = "nas", label = "NAS", iconRes = R.drawable.nas),
+    DeviceIconOption(type = "phone", label = "手机", lightIconRes = R.drawable.phone_b, darkIconRes = R.drawable.phone_w),
+    DeviceIconOption(type = "desktop", label = "台式机", lightIconRes = R.drawable.computer_b, darkIconRes = R.drawable.computer_w),
+    DeviceIconOption(type = "laptop", label = "笔记本", lightIconRes = R.drawable.laptop_b, darkIconRes = R.drawable.laptop_w),
+    DeviceIconOption(type = "server", label = "服务器", lightIconRes = R.drawable.server_b, darkIconRes = R.drawable.server_w),
+    DeviceIconOption(type = "nas", label = "NAS", lightIconRes = R.drawable.nas_b, darkIconRes = R.drawable.nas_w),
 )
 
-private fun resolveDeviceIconRes(deviceType: String): Int {
-    return deviceIconOptions.firstOrNull { it.type == deviceType }?.iconRes ?: R.drawable.computer
+private fun resolveDeviceIconRes(deviceType: String, isDarkTheme: Boolean): Int {
+    val option = deviceIconOptions.firstOrNull { it.type == deviceType }
+    return when {
+        option == null && isDarkTheme -> R.drawable.computer_w
+        option == null -> R.drawable.computer_b
+        isDarkTheme -> option.darkIconRes
+        else -> option.lightIconRes
+    }
+}
+
+private fun NetworkConfig.isPlaceholderConfig(): Boolean {
+    return networkLabel.isBlank() &&
+        hostname.isBlank() &&
+        networkName.isBlank() &&
+        networkSecret.isBlank() &&
+        servers == NetworkConfig.defaultServers()
+}
+
+private fun sanitizeDashboardConfigs(configs: List<NetworkConfig>): MutableList<NetworkConfig> {
+    return configs.filterNot { it.isPlaceholderConfig() }.toMutableList()
 }
 
 @Composable
@@ -273,8 +292,9 @@ private fun DashboardScreen(
     val repo = LocalSettingsRepository.current
     val scope = rememberCoroutineScope()
     val runtimeState by EasyTierService.runtimeState.collectAsState()
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
-    var configs by remember { mutableStateOf(repo.loadNetworkConfigs()) }
+    var configs by remember { mutableStateOf(sanitizeDashboardConfigs(repo.loadNetworkConfigs())) }
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
     var showAddNodeDialog by remember { mutableStateOf(false) }
     var showNetworkConfigDialog by remember { mutableStateOf(false) }
@@ -297,7 +317,7 @@ private fun DashboardScreen(
 
     LaunchedEffect(Unit) {
         EasyTierService.refreshRuntimeState()
-        configs = repo.loadNetworkConfigs()
+        configs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
     }
 
     LaunchedEffect(activeConfig?.instanceName, isRunning) {
@@ -369,7 +389,7 @@ private fun DashboardScreen(
                 val jsonStr = inputStream?.bufferedReader()?.use { it.readText() } ?: return@launch
                 val importedConfig = com.easytier.data.NetworkConfigImport.fromText(jsonStr) ?: return@launch
                 importedConfig.instanceName = NetworkConfig.generateInstanceName()
-                val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                 updatedConfigs.add(importedConfig)
                 repo.saveNetworkConfigs(updatedConfigs)
                 configs = updatedConfigs
@@ -454,7 +474,7 @@ private fun DashboardScreen(
                 if (network.isBlank() || secret.isBlank()) {
                     return@AppDialog
                 }
-                val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                 val newConfig = NetworkConfig().apply {
                     hostname = deviceName.trim()
                     networkLabel = deviceName.trim().ifBlank { network }
@@ -463,7 +483,12 @@ private fun DashboardScreen(
                     networkSecret = secret
                     this.isRunning = false
                 }
-                updatedConfigs.add(newConfig)
+                val placeholderIndex = updatedConfigs.indexOfFirst { it.isPlaceholderConfig() }
+                if (placeholderIndex >= 0) {
+                    updatedConfigs[placeholderIndex] = newConfig
+                } else {
+                    updatedConfigs.add(newConfig)
+                }
                 repo.saveNetworkConfigs(updatedConfigs)
                 configs = updatedConfigs
 
@@ -471,9 +496,10 @@ private fun DashboardScreen(
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
             },
         ) {
+            val compactFieldModifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
             Text(
                 "设备图标",
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -481,20 +507,21 @@ private fun DashboardScreen(
                     val selected = selectedDeviceType == option.type
                     OutlinedButton(
                         onClick = { selectedDeviceType = option.type },
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(8.dp),
                         border = androidx.compose.foundation.BorderStroke(
                             width = if (selected) 1.5.dp else 1.dp,
                             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
                         ),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 5.dp),
+                        modifier = Modifier.heightIn(min = 34.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Image(
-                                painter = painterResource(id = option.iconRes),
+                                painter = painterResource(id = resolveDeviceIconRes(option.type, isDarkTheme)),
                                 contentDescription = option.label,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
-                            Text(option.label, fontSize = 11.sp)
+                            Text(option.label, fontSize = 10.sp)
                         }
                     }
                 }
@@ -504,21 +531,24 @@ private fun DashboardScreen(
                 onValueChange = { deviceName = it },
                 label = { Text("设备名称") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                modifier = compactFieldModifier,
             )
             OutlinedTextField(
                 value = networkName,
                 onValueChange = { networkName = it },
                 label = { Text("网络名称") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                modifier = compactFieldModifier,
             )
             OutlinedTextField(
                 value = networkSecret,
                 onValueChange = { networkSecret = it },
                 label = { Text("网络密码") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                modifier = compactFieldModifier,
             )
         }
     }
@@ -558,7 +588,7 @@ private fun DashboardScreen(
                 confirmText = "保存",
                 icon = Icons.Rounded.Wifi,
                 onConfirm = {
-                    val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                    val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                     val idx = updatedConfigs.indexOfFirst { it.instanceName == cfg.instanceName }
                     if (idx >= 0) {
                         updatedConfigs[idx] = updatedConfigs[idx].apply {
@@ -584,40 +614,45 @@ private fun DashboardScreen(
                     editingConfigInstanceName = null
                 },
             ) {
+                val compactFieldModifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
+                        .heightIn(max = 380.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     OutlinedTextField(
                         value = editLabel,
                         onValueChange = { editLabel = it },
                         label = { Text("配置标签") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        modifier = compactFieldModifier,
                     )
                     OutlinedTextField(
                         value = editHostname,
                         onValueChange = { editHostname = it },
                         label = { Text("本机主机名") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        modifier = compactFieldModifier,
                     )
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
                         label = { Text("网络名称") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        modifier = compactFieldModifier,
                     )
                     OutlinedTextField(
                         value = editSecret,
                         onValueChange = { editSecret = it },
                         label = { Text("网络密钥") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        modifier = compactFieldModifier,
                         visualTransformation = if (secretVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { secretVisible = !secretVisible }, modifier = Modifier.size(24.dp)) {
@@ -641,7 +676,8 @@ private fun DashboardScreen(
                             onValueChange = { editIpv4 = it },
                             label = { Text("静态 IPv4") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                            modifier = compactFieldModifier,
                         )
                     }
 
@@ -1199,6 +1235,7 @@ private fun ConfigRow(
     enabled: Boolean = true,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1213,7 +1250,7 @@ private fun ConfigRow(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(id = resolveDeviceIconRes(config.deviceType)),
+                painter = painterResource(id = resolveDeviceIconRes(config.deviceType, isDarkTheme)),
                 contentDescription = "设备图标",
                 modifier = Modifier.size(16.dp),
             )
