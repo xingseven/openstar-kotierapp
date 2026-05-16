@@ -228,7 +228,7 @@ private fun DashboardScreen(
     var configs by remember { mutableStateOf(repo.loadNetworkConfigs()) }
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
     var showAddNodeDialog by remember { mutableStateOf(false) }
-    var isNodeSwitching by remember { mutableStateOf(false) }
+    var switchingInstance by remember { mutableStateOf<String?>(null) }
     var pendingVpnConfig by remember { mutableStateOf<NetworkConfig?>(null) }
 
     val activeConfig = remember(configs, runtimeState.runningInstances) {
@@ -264,8 +264,10 @@ private fun DashboardScreen(
             scope.launch {
                 startVpnForConfig(context, cfg)
                 EasyTierService.refreshRuntimeState()
+                switchingInstance = null
             }
         } else {
+            switchingInstance = null
             Toast.makeText(context, "VPN 授权被拒绝", Toast.LENGTH_SHORT).show()
         }
     }
@@ -276,24 +278,24 @@ private fun DashboardScreen(
             return
         }
         scope.launch {
-            isNodeSwitching = true
+            switchingInstance = cfg.instanceName
             if (runtimeState.runningInstances.contains(cfg.instanceName)) {
                 EasyTierService.stopNetwork(cfg.instanceName)
                 EasyTierService.refreshRuntimeState()
-                isNodeSwitching = false
+                switchingInstance = null
                 return@launch
             }
 
             val result = EasyTierService.startNetwork(cfg)
             if (!result.success) {
                 Toast.makeText(context, "启动失败: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
-                isNodeSwitching = false
+                switchingInstance = null
                 return@launch
             }
 
             if (cfg.noTun) {
                 EasyTierService.refreshRuntimeState()
-                isNodeSwitching = false
+                switchingInstance = null
                 return@launch
             }
 
@@ -305,7 +307,7 @@ private fun DashboardScreen(
                 startVpnForConfig(context, cfg)
             }
             EasyTierService.refreshRuntimeState()
-            isNodeSwitching = false
+            switchingInstance = null
         }
     }
 
@@ -637,7 +639,7 @@ private fun DashboardScreen(
                                 config = cfg,
                                 isRunning = isCfgRunning,
                                 onStart = { startConfig(cfg) },
-                                enabled = !isNodeSwitching,
+                                enabled = switchingInstance == null || switchingInstance != cfg.instanceName,
                             )
                             if (index < configs.lastIndex) {
                                 HorizontalDivider(color = Color(0xFFEFF2F6))
