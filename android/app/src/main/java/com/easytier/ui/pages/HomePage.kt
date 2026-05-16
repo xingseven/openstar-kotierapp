@@ -510,51 +510,6 @@ private fun DashboardScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = if (isRunning) "节点运行中" else "节点已停止",
-                        color = Color(0xFF111827),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Button(
-                        onClick = {
-                            val cfg = activeConfig ?: return@Button
-                            startConfig(cfg)
-                        },
-                        enabled = !isNodeSwitching,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRunning) Color(0xFFEF4444) else Color(0xFF1F6FFF),
-                            contentColor = Color.White,
-                        ),
-                    ) {
-                        Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text(
-                            when {
-                                isNodeSwitching && isRunning -> "关闭中..."
-                                isNodeSwitching -> "开启中..."
-                                isRunning -> "关闭节点"
-                                else -> "开启节点"
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
             ) {
