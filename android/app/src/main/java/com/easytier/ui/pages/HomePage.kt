@@ -132,7 +132,9 @@ fun HomePage() {
     var showLogPage by remember { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
     val view = LocalView.current
-    val background = MaterialTheme.colorScheme.background
+    val colorScheme = MaterialTheme.colorScheme
+    val background = colorScheme.background
+    val bottomBarColor = colorScheme.surface
     val isDashboard = !showLogPage && selectedIndex == 0
 
     BackHandler(enabled = showLogPage) {
@@ -150,20 +152,19 @@ fun HomePage() {
             val lightBars = background.luminance() > 0.5f
             controller.isAppearanceLightStatusBars = lightBars
         }
-        // 底部导航栏所有页面统一白色
-        activity.window.navigationBarColor = Color.White.toArgb()
-        controller.isAppearanceLightNavigationBars = true
+        activity.window.navigationBarColor = bottomBarColor.toArgb()
+        controller.isAppearanceLightNavigationBars = bottomBarColor.luminance() > 0.5f
     }
 
     Scaffold(
-        containerColor = Color(0xFFF2F4F8),
+        containerColor = background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding(),
-                color = Color.White,
+                color = bottomBarColor,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             ) {
@@ -177,7 +178,7 @@ fun HomePage() {
                 ) {
                     navItems.forEachIndexed { index, item ->
                         val selected = selectedIndex == index
-                        val tint = if (selected) Color(0xFF1F6FFF) else Color(0xFF98A2B3)
+                        val tint = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -219,7 +220,7 @@ fun HomePage() {
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            color = Color(0xFFF2F4F8),
+            color = background,
         ) {
             when {
                 showLogPage -> LogPage(onBack = { showLogPage = false })
@@ -255,6 +256,7 @@ private fun DashboardScreen(
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
     var showAddNodeDialog by remember { mutableStateOf(false) }
     var showNetworkConfigDialog by remember { mutableStateOf(false) }
+    var editingConfigInstanceName by remember { mutableStateOf<String?>(null) }
     var showServerManagerDialog by remember { mutableStateOf(false) }
     var switchingInstance by remember { mutableStateOf<String?>(null) }
     var pendingVpnConfig by remember { mutableStateOf<NetworkConfig?>(null) }
@@ -358,7 +360,9 @@ private fun DashboardScreen(
 
     fun startConfig(cfg: NetworkConfig) {
         if (cfg.networkName.isBlank()) {
-            Toast.makeText(context, "该配置缺少网络名称，请编辑配置", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "该节点未填写“网络名称”。请点右侧“三点”→“修改配置”后填写。", Toast.LENGTH_SHORT).show()
+            editingConfigInstanceName = cfg.instanceName
+            showNetworkConfigDialog = true
             return
         }
         scope.launch {
@@ -468,9 +472,12 @@ private fun DashboardScreen(
 
     // 网络配置弹窗（可编辑）
     if (showNetworkConfigDialog) {
-        val cfg = activeConfig
+        val cfg = editingConfigInstanceName
+            ?.let { targetInstance -> configs.firstOrNull { it.instanceName == targetInstance } }
+            ?: activeConfig
         if (cfg == null) {
             showNetworkConfigDialog = false
+            editingConfigInstanceName = null
         } else {
             var showAdvanced by remember { mutableStateOf(false) }
             var secretVisible by remember { mutableStateOf(false) }
@@ -489,13 +496,16 @@ private fun DashboardScreen(
             var editDisableUdpHp by remember { mutableStateOf(cfg.disableUdpHolePunching) }
             var editDisableTcpHp by remember { mutableStateOf(cfg.disableTcpHolePunching) }
 
-            BasicAlertDialog(onDismissRequest = { showNetworkConfigDialog = false }) {
+            BasicAlertDialog(onDismissRequest = {
+                showNetworkConfigDialog = false
+                editingConfigInstanceName = null
+            }) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 480.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp,
                 ) {
                     Column(
@@ -556,7 +566,7 @@ private fun DashboardScreen(
                         )
 
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("DHCP 自动分配", color = Color(0xFF111827), fontSize = 13.sp)
+                            Text("DHCP 自动分配", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                             Spacer(Modifier.weight(1f))
                             Switch(checked = editDhcp, onCheckedChange = { editDhcp = it })
                         }
@@ -570,7 +580,7 @@ private fun DashboardScreen(
                             )
                         }
 
-                        HorizontalDivider(color = Color(0xFFEFF2F6))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                         TextButton(onClick = { showAdvanced = !showAdvanced }) {
                             Text(if (showAdvanced) "收起详情" else "展开详情", fontSize = 13.sp)
                         }
@@ -591,7 +601,10 @@ private fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            TextButton(onClick = { showNetworkConfigDialog = false }) {
+                            TextButton(onClick = {
+                                showNetworkConfigDialog = false
+                                editingConfigInstanceName = null
+                            }) {
                                 Text("取消")
                             }
                             Spacer(Modifier.width(8.dp))
@@ -620,6 +633,7 @@ private fun DashboardScreen(
                                         configs = updatedConfigs
                                     }
                                     showNetworkConfigDialog = false
+                                    editingConfigInstanceName = null
                                 },
                             ) {
                                 Text("保存")
@@ -839,7 +853,7 @@ private fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
                 Row(
                     modifier = Modifier
@@ -848,7 +862,7 @@ private fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("连接状态", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
+                        Text("连接状态", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             if (isRunning) "网络实例: ${activeConfig?.networkLabel?.ifBlank { activeConfig?.instanceName } ?: "--"}" else "当前未连接",
@@ -860,7 +874,7 @@ private fun DashboardScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             if (localNode?.virtualIp.isNullOrBlank()) "--" else localNode?.virtualIp.orEmpty(),
-                            color = Color(0xFF111827),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -874,7 +888,7 @@ private fun DashboardScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("延迟状态", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
+                            Text("延迟状态", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
                                 text = if (topLatency > 0) "最快 ${topLatency}ms" else "暂无",
@@ -896,7 +910,10 @@ private fun DashboardScreen(
                             MetricActionItem(
                                 icon = Icons.Rounded.Wifi,
                                 title = "网络配置",
-                                onClick = { showNetworkConfigDialog = true },
+                                onClick = {
+                                    editingConfigInstanceName = activeConfig?.instanceName
+                                    showNetworkConfigDialog = true
+                                },
                             )
                             MetricActionItem(
                                 icon = Icons.Rounded.Dns,
@@ -919,7 +936,7 @@ private fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                     Row(
@@ -929,7 +946,7 @@ private fun DashboardScreen(
                         Text(
                             text = "节点列表",
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF111827),
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f),
                         )
                         Row(
@@ -968,7 +985,10 @@ private fun DashboardScreen(
                                 config = cfg,
                                 isRunning = isCfgRunning,
                                 onStart = { startConfig(cfg) },
-                                onEdit = { showNetworkConfigDialog = true },
+                                onEdit = {
+                                    editingConfigInstanceName = cfg.instanceName
+                                    showNetworkConfigDialog = true
+                                },
                                 onDelete = {
                                     val updated = configs.toMutableList()
                                     updated.removeAt(index)
@@ -978,7 +998,7 @@ private fun DashboardScreen(
                                 enabled = switchingInstance == null || switchingInstance != cfg.instanceName,
                             )
                             if (index < configs.lastIndex) {
-                                HorizontalDivider(color = Color(0xFFEFF2F6))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                             }
                         }
                     }
@@ -986,7 +1006,7 @@ private fun DashboardScreen(
                     if (isRunning) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 6.dp),
-                            color = Color(0xFFEFF2F6),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
                         )
                         Text(
                             text = "在线节点",
@@ -1005,7 +1025,7 @@ private fun DashboardScreen(
                             nodes.forEachIndexed { index, item ->
                                 DeviceRow(item)
                                 if (index < nodes.lastIndex) {
-                                    HorizontalDivider(color = Color(0xFFEFF2F6))
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                                 }
                             }
                         }
@@ -1058,13 +1078,13 @@ private fun MetricActionItem(
             modifier = Modifier
                 .size(34.dp)
                 .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(Color(0xFFF0F5FF)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = title, tint = Color(0xFF1F6FFF), modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Text(title, fontSize = 11.sp, color = Color(0xFF98A2B3))
+        Text(title, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1080,13 +1100,19 @@ private fun DeviceRow(node: NodeInfo) {
             modifier = Modifier
                 .size(28.dp)
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                .background(if (node.isLocal) Color(0xFFEAF3FF) else Color(0xFFF5F8FF)),
+                .background(
+                    if (node.isLocal) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Wifi,
                 contentDescription = null,
-                tint = Color(0xFF1F6FFF),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp),
             )
         }
@@ -1094,7 +1120,7 @@ private fun DeviceRow(node: NodeInfo) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = if (node.hostname.isBlank()) "未命名节点" else node.hostname,
-                color = Color(0xFF111827),
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 maxLines = 1,
@@ -1109,11 +1135,17 @@ private fun DeviceRow(node: NodeInfo) {
                     append(" / ${node.connectionType}")
                 }
             }
-            Text(text = detail, color = Color(0xFF98A2B3), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = detail,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
         Text(
             text = if (node.isLocal) "本机" else "在线",
-            color = Color(0xFF1F6FFF),
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -1140,13 +1172,13 @@ private fun ConfigRow(
             modifier = Modifier
                 .size(28.dp)
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                .background(Color(0xFFF5F8FF)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Wifi,
                 contentDescription = null,
-                tint = Color(0xFF1F6FFF),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp),
             )
         }
@@ -1154,15 +1186,15 @@ private fun ConfigRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = config.networkLabel.ifBlank { config.hostname.ifBlank { "未命名节点" } },
-                color = Color(0xFF111827),
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "网络: ${config.networkName}",
-                color = Color(0xFF98A2B3),
+                text = "网络: ${config.networkName.ifBlank { "未设置" }}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1173,13 +1205,13 @@ private fun ConfigRow(
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
                     contentDescription = "更多操作",
-                    tint = Color(0xFF98A2B3),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
-                modifier = Modifier.background(Color.White, shape = RoundedCornerShape(8.dp)),
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp)),
             ) {
                 DropdownMenuItem(
                     text = { Text("修改配置") },
@@ -1222,11 +1254,11 @@ private fun ConfigInfoRow(label: String, value: String) {
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = Color(0xFF98A2B3), fontSize = 12.sp)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.weight(1f))
         Text(
             value,
-            color = Color(0xFF111827),
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
