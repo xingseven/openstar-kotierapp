@@ -117,8 +117,8 @@ data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem("首页", R.drawable.ic_nav_network),
-    NavItem("网络", R.drawable.ic_nav_online),
+    NavItem("首页", R.drawable.ic_nav_online),
+    NavItem("网络", R.drawable.ic_nav_network),
     NavItem("服务器", R.drawable.ic_nav_server),
     NavItem("我的", R.drawable.ic_nav_setup),
 )
