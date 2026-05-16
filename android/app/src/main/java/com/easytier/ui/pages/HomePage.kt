@@ -1,6 +1,12 @@
 package com.easytier.ui.pages
 
+import android.app.Activity
+import android.content.Intent
+import android.net.VpnService
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,33 +25,36 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -53,10 +63,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import com.easytier.data.NetworkConfig
+import com.easytier.data.NodeInfo
+import com.easytier.data.ServerEntry
+import com.easytier.service.EasyTierService
+import com.easytier.ui.components.AppDialog
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class NavItem(
     val label: String,
@@ -76,6 +99,9 @@ fun HomePage() {
     var showOneClickPage by rememberSaveable { mutableStateOf(false) }
     var showLogPage by remember { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
+    val view = LocalView.current
+    val background = MaterialTheme.colorScheme.background
+    val isDashboard = !showOneClickPage && !showLogPage && selectedIndex == 0
 
     BackHandler(enabled = showOneClickPage || showLogPage) {
         when {
@@ -84,16 +110,34 @@ fun HomePage() {
         }
     }
 
+    LaunchedEffect(isDashboard, background, view) {
+        val activity = view.context as? Activity ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(activity.window, view)
+        if (isDashboard) {
+            activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
+            activity.window.navigationBarColor = Color.White.toArgb()
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = true
+        } else {
+            activity.window.statusBarColor = Color.Transparent.toArgb()
+            activity.window.navigationBarColor = background.toArgb()
+            val lightBars = background.luminance() > 0.5f
+            controller.isAppearanceLightStatusBars = lightBars
+            controller.isAppearanceLightNavigationBars = lightBars
+        }
+    }
+
     Scaffold(
         containerColor = Color(0xFFF2F4F8),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding(),
                 color = Color.White,
-                tonalElevation = 2.dp,
-                shadowElevation = 2.dp,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
             ) {
                 Row(
                     modifier = Modifier
@@ -160,6 +204,7 @@ fun HomePage() {
                             onOpenOneClick = { showOneClickPage = true },
                             onOpenServers = { selectedIndex = 2 },
                         )
+
                         1 -> NetworkConfigPage()
                         2 -> ServersPage()
                         3 -> SettingsPage(onNavigateToLog = { showLogPage = true })
@@ -176,19 +221,125 @@ private fun DashboardScreen(
     onOpenOneClick: () -> Unit,
     onOpenServers: () -> Unit,
 ) {
-    val devices = remember {
-        mutableStateListOf(
-            DashboardDevice("获证硬锁节点", "路由 2 / 在线 5", true),
-            DashboardDevice("联机号中心", "路由 1 / 在线 2", false),
-            DashboardDevice("家防护设备", "路由 3 / 在线 6", false),
-            DashboardDevice("我方防锚", "路由 2 / 在线 4", true),
-            DashboardDevice("稳定", "路由 4 / 在线 8", true),
-        )
+    val context = LocalContext.current as Activity
+    val repo = LocalSettingsRepository.current
+    val scope = rememberCoroutineScope()
+    val runtimeState by EasyTierService.runtimeState.collectAsState()
+
+    var configs by remember { mutableStateOf(repo.loadNetworkConfigs()) }
+    var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
+    var showAddNodeDialog by remember { mutableStateOf(false) }
+    var isNodeSwitching by remember { mutableStateOf(false) }
+    var pendingVpnConfig by remember { mutableStateOf<NetworkConfig?>(null) }
+
+    val activeConfig = remember(configs, runtimeState.runningInstances) {
+        val runningName = runtimeState.runningInstances.firstOrNull()
+        configs.firstOrNull { it.instanceName == runningName } ?: configs.firstOrNull()
+    }
+
+    val isRunning = activeConfig?.instanceName?.let { runtimeState.runningInstances.contains(it) } == true
+
+    LaunchedEffect(Unit) {
+        EasyTierService.refreshRuntimeState()
+        configs = repo.loadNetworkConfigs()
+    }
+
+    LaunchedEffect(activeConfig?.instanceName, isRunning) {
+        val instanceName = activeConfig?.instanceName
+        if (!isRunning || instanceName.isNullOrBlank()) {
+            nodes = emptyList()
+            return@LaunchedEffect
+        }
+        while (true) {
+            nodes = EasyTierService.collectNodeInfos(instanceName)
+            delay(3000)
+        }
+    }
+
+    val vpnLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val cfg = pendingVpnConfig ?: return@rememberLauncherForActivityResult
+        pendingVpnConfig = null
+        if (result.resultCode == Activity.RESULT_OK) {
+            scope.launch {
+                startVpnForConfig(context, cfg)
+                EasyTierService.refreshRuntimeState()
+            }
+        } else {
+            Toast.makeText(context, "VPN 授权被拒绝", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val localNode = nodes.firstOrNull { it.isLocal }
+    val peerNodes = nodes.filterNot { it.isLocal }
+    val totalDeviceCount = nodes.size
+    val onlineCount = nodes.count { it.virtualIp.isNotBlank() }
+    val peerCount = peerNodes.size
+    val avgLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.average().takeIf { !it.isNaN() }?.toInt() ?: 0
+    val topLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.minOrNull() ?: 0
+    val totalRx = nodes.sumOf { it.rxBytes }
+    val totalTx = nodes.sumOf { it.txBytes }
+    val onlineRatio = if (totalDeviceCount <= 0) 0f else (onlineCount.toFloat() / totalDeviceCount.toFloat()).coerceIn(0f, 1f)
+
+    if (showAddNodeDialog) {
+        var nodeName by remember { mutableStateOf("") }
+        var nodeUrl by remember { mutableStateOf("") }
+
+        AppDialog(
+            title = "添加节点",
+            onDismissRequest = { showAddNodeDialog = false },
+            confirmText = "添加",
+            confirmEnabled = nodeUrl.isNotBlank(),
+            onConfirm = {
+                val url = nodeUrl.trim()
+                if (url.isBlank()) {
+                    return@AppDialog
+                }
+                val name = nodeName.trim().ifBlank { url }
+                val favorites = repo.loadFavoriteServers().toMutableList()
+                if (favorites.none { it.url == url }) {
+                    favorites.add(ServerEntry(name = name, url = url))
+                    repo.saveFavoriteServers(favorites)
+                }
+
+                val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                if (updatedConfigs.isNotEmpty()) {
+                    val targetIndex = updatedConfigs.indexOfFirst { it.instanceName == activeConfig?.instanceName }
+                        .takeIf { it >= 0 } ?: 0
+                    val target = updatedConfigs[targetIndex]
+                    if (target.servers.none { it == url }) {
+                        target.servers = (target.servers + url).toMutableList()
+                    }
+                    repo.saveNetworkConfigs(updatedConfigs)
+                    configs = updatedConfigs
+                }
+
+                showAddNodeDialog = false
+                Toast.makeText(context, "节点已添加", Toast.LENGTH_SHORT).show()
+            },
+        ) {
+            OutlinedTextField(
+                value = nodeName,
+                onValueChange = { nodeName = it },
+                label = { Text("节点名称") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = nodeUrl,
+                onValueChange = { nodeUrl = it },
+                label = { Text("节点地址") },
+                placeholder = { Text("tcp://example.com:11010") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 14.dp),
+        contentPadding = PaddingValues(bottom = 12.dp),
     ) {
         item {
             Box(
@@ -221,19 +372,6 @@ private fun DashboardScreen(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
                         )
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = "搜索",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(modifier = Modifier.size(12.dp))
-                        Icon(
-                            imageVector = Icons.Rounded.Shield,
-                            contentDescription = "状态",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp),
-                        )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -258,7 +396,7 @@ private fun DashboardScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(
-                                        progress = { 0.32f },
+                                        progress = { onlineRatio },
                                         modifier = Modifier.size(90.dp),
                                         strokeWidth = 8.dp,
                                         color = Color(0xFF67E8F9),
@@ -266,7 +404,7 @@ private fun DashboardScreen(
                                     )
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                            text = "32",
+                                            text = onlineCount.toString(),
                                             color = Color.White,
                                             fontSize = 29.sp,
                                             fontWeight = FontWeight.Bold,
@@ -291,33 +429,35 @@ private fun DashboardScreen(
                                     .padding(horizontal = 14.dp, vertical = 12.dp),
                             ) {
                                 Text(
-                                    text = "总访问量",
+                                    text = "连接节点",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "518",
+                                    text = peerCount.toString(),
                                     color = Color.White,
-                                    fontSize = 34.sp,
+                                    fontSize = 30.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    text = "较昨日 +8.2%",
+                                    text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
                                     color = Color.White.copy(alpha = 0.82f),
                                     fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = "业务负载",
+                                    text = "延迟",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "73",
+                                    text = if (avgLatency > 0) "${avgLatency}ms" else "--",
                                     color = Color.White,
-                                    fontSize = 27.sp,
+                                    fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
@@ -337,40 +477,130 @@ private fun DashboardScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (isRunning) "节点运行中" else "节点已停止",
+                        color = Color(0xFF111827),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(
+                        onClick = {
+                            val cfg = activeConfig
+                            if (cfg == null || cfg.networkName.isBlank()) {
+                                Toast.makeText(context, "请先到网络页配置网络", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            scope.launch {
+                                isNodeSwitching = true
+                                if (isRunning) {
+                                    EasyTierService.stopNetwork(cfg.instanceName)
+                                    EasyTierService.refreshRuntimeState()
+                                    isNodeSwitching = false
+                                    return@launch
+                                }
+
+                                val result = EasyTierService.startNetwork(cfg)
+                                if (!result.success) {
+                                    Toast.makeText(context, "启动失败: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
+                                    isNodeSwitching = false
+                                    return@launch
+                                }
+
+                                if (cfg.noTun) {
+                                    EasyTierService.refreshRuntimeState()
+                                    isNodeSwitching = false
+                                    return@launch
+                                }
+
+                                val intent: Intent? = VpnService.prepare(context)
+                                if (intent != null) {
+                                    pendingVpnConfig = cfg
+                                    vpnLauncher.launch(intent)
+                                } else {
+                                    startVpnForConfig(context, cfg)
+                                }
+                                EasyTierService.refreshRuntimeState()
+                                isNodeSwitching = false
+                            }
+                        },
+                        enabled = !isNodeSwitching,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRunning) Color(0xFFEF4444) else Color(0xFF1F6FFF),
+                            contentColor = Color.White,
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(
+                            when {
+                                isNodeSwitching && isRunning -> "关闭中..."
+                                isNodeSwitching -> "开启中..."
+                                isRunning -> "关闭节点"
+                                else -> "开启节点"
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("连接状态", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("5 台设备在线", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text(
+                            if (isRunning) "网络实例: ${activeConfig?.networkLabel?.ifBlank { activeConfig?.instanceName } ?: "--"}" else "当前未连接",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "255 7/50",
+                            if (localNode?.virtualIp.isNullOrBlank()) "--" else localNode?.virtualIp.orEmpty(),
                             color = Color(0xFF111827),
-                            fontSize = 35.sp,
+                            fontSize = 30.sp,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            "网络评分 92.5 分",
+                            "下载 ${NodeInfo.formatBytes(totalRx)} / 上传 ${NodeInfo.formatBytes(totalTx)}",
                             color = Color(0xFF94A3B8),
                             fontSize = 11.sp,
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("一键速度", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
+                            Text("延迟状态", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
-                                text = "体验",
+                                text = if (topLatency > 0) "最快 ${topLatency}ms" else "暂无",
                                 color = Color(0xFF1F6FFF),
                                 fontSize = 11.sp,
-                                modifier = Modifier.clickable { onOpenOneClick() },
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("40/90 ms", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text(
+                            if (avgLatency > 0) "平均 ${avgLatency}ms" else "暂无延迟数据",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                        )
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -387,7 +617,7 @@ private fun DashboardScreen(
                                 onClick = onOpenOneClick,
                             )
                             MetricActionItem(
-                                icon = Icons.Rounded.Settings,
+                                icon = Icons.Rounded.Dns,
                                 title = "节点管理",
                                 onClick = onOpenServers,
                             )
@@ -401,7 +631,7 @@ private fun DashboardScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
@@ -415,23 +645,38 @@ private fun DashboardScreen(
                             color = Color(0xFF111827),
                             modifier = Modifier.weight(1f),
                         )
-                        Text(
-                            text = "更多 >",
-                            fontSize = 12.sp,
-                            color = Color(0xFF98A2B3),
-                            modifier = Modifier.clickable { onOpenServers() },
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { showAddNodeDialog = true },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = null,
+                                tint = Color(0xFF1F6FFF),
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "添加节点",
+                                fontSize = 12.sp,
+                                color = Color(0xFF1F6FFF),
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    devices.forEachIndexed { index, item ->
-                        DeviceSwitchRow(
-                            name = item.name,
-                            detail = item.detail,
-                            enabled = item.enabled,
-                            onEnabledChange = { devices[index] = item.copy(enabled = it) },
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (nodes.isEmpty()) {
+                        Text(
+                            text = if (isRunning) "等待节点数据..." else "节点未启动",
+                            color = Color(0xFF98A2B3),
+                            fontSize = 12.sp,
                         )
-                        if (index < devices.lastIndex) {
-                            HorizontalDivider(color = Color(0xFFEFF2F6))
+                    } else {
+                        nodes.forEachIndexed { index, item ->
+                            DeviceRow(item)
+                            if (index < nodes.lastIndex) {
+                                HorizontalDivider(color = Color(0xFFEFF2F6))
+                            }
                         }
                     }
                 }
@@ -440,11 +685,33 @@ private fun DashboardScreen(
     }
 }
 
-private data class DashboardDevice(
-    val name: String,
-    val detail: String,
-    val enabled: Boolean,
-)
+private suspend fun startVpnForConfig(context: Activity, cfg: NetworkConfig) {
+    var assignedIp = if (!cfg.dhcp && cfg.ipv4.isNotBlank()) {
+        NetworkConfig.vpnIpv4Address(cfg.ipv4)
+    } else {
+        ""
+    }
+
+    if (assignedIp.isBlank()) {
+        repeat(20) {
+            val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
+            val local = currentNodes.find { it.isLocal }
+            if (local != null && local.virtualIp.isNotBlank()) {
+                assignedIp = local.virtualIp
+                return@repeat
+            }
+            delay(300)
+        }
+    }
+
+    EasyTierService.startVpnService(
+        context,
+        cfg.instanceName,
+        assignedIp.ifBlank { NetworkConfig.vpnIpv4Address(cfg.ipv4).ifBlank { "10.144.144.1" } },
+        24,
+        emptyList(),
+    )
+}
 
 @Composable
 private fun MetricActionItem(
@@ -471,12 +738,7 @@ private fun MetricActionItem(
 }
 
 @Composable
-private fun DeviceSwitchRow(
-    name: String,
-    detail: String,
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-) {
+private fun DeviceRow(node: NodeInfo) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -487,7 +749,7 @@ private fun DeviceSwitchRow(
             modifier = Modifier
                 .size(28.dp)
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                .background(Color(0xFFF5F8FF)),
+                .background(if (node.isLocal) Color(0xFFEAF3FF) else Color(0xFFF5F8FF)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -499,20 +761,30 @@ private fun DeviceSwitchRow(
         }
         Spacer(modifier = Modifier.size(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = name, color = Color(0xFF111827), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(text = detail, color = Color(0xFF98A2B3), fontSize = 11.sp)
+            Text(
+                text = if (node.hostname.isBlank()) "未命名节点" else node.hostname,
+                color = Color(0xFF111827),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val detail = buildString {
+                append(if (node.virtualIp.isBlank()) "IP --" else "IP ${node.virtualIp}")
+                if (node.latencyMs > 0) {
+                    append(" / ${node.latencyMs}ms")
+                }
+                if (node.connectionType.isNotBlank() && node.connectionType != "unknown") {
+                    append(" / ${node.connectionType}")
+                }
+            }
+            Text(text = detail, color = Color(0xFF98A2B3), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Switch(
-            checked = enabled,
-            onCheckedChange = onEnabledChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF1F6FFF),
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = Color(0xFFD1D5DB),
-                uncheckedBorderColor = Color.Transparent,
-                checkedBorderColor = Color.Transparent,
-            ),
+        Text(
+            text = if (node.isLocal) "本机" else "在线",
+            color = Color(0xFF1F6FFF),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
