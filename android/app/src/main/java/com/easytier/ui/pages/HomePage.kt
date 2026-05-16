@@ -680,7 +680,7 @@ private fun DashboardScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xCCE8F0FF)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xCC2F80E9)),
                         ) {
                             Column(
                                 modifier = Modifier
