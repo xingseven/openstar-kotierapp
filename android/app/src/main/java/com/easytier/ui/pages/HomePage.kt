@@ -634,7 +634,7 @@ private fun DashboardScreen(
                     )
                     .padding(horizontal = 16.dp)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, bottom = 16.dp),
+                    .padding(top = 8.dp, bottom = 14.dp),
             ) {
                 Column {
                     Row(
@@ -659,7 +659,7 @@ private fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(350.dp),
+                            .height(252.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Card(
@@ -682,9 +682,9 @@ private fun DashboardScreen(
                                 Text(
                                     text = peerCount.toString(),
                                     color = Color.White,
-                                    fontSize = 54.sp,
+                                    fontSize = 50.sp,
                                     fontWeight = FontWeight.Bold,
-                                    lineHeight = 56.sp,
+                                    lineHeight = 52.sp,
                                 )
                                 Text(
                                     text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
@@ -693,7 +693,7 @@ private fun DashboardScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(modifier = Modifier.height(20.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "延迟",
                                     color = Color.White.copy(alpha = 0.86f),
@@ -703,7 +703,7 @@ private fun DashboardScreen(
                                 Text(
                                     text = if (avgLatency > 0) "${avgLatency}ms" else "--",
                                     color = Color.White,
-                                    fontSize = 40.sp,
+                                    fontSize = 34.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
@@ -715,32 +715,18 @@ private fun DashboardScreen(
                                 .fillMaxHeight(),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Card(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = Color(0x0DFFFFFF)),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.hero_beijing),
-                                        contentDescription = "网络插画",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color.Transparent,
-                                                        Color(0x331768E8),
-                                                    ),
-                                                ),
-                                            ),
-                                    )
-                                }
+                                Image(
+                                    painter = painterResource(id = R.drawable.hero_beijing),
+                                    contentDescription = "网络插画",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
                             }
                             Card(
                                 modifier = Modifier
