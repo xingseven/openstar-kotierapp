@@ -75,7 +75,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
-import com.easytier.data.ServerEntry
 import com.easytier.service.EasyTierService
 import com.easytier.ui.components.AppDialog
 import kotlinx.coroutines.delay
@@ -283,54 +282,55 @@ private fun DashboardScreen(
     val onlineRatio = if (totalDeviceCount <= 0) 0f else (onlineCount.toFloat() / totalDeviceCount.toFloat()).coerceIn(0f, 1f)
 
     if (showAddNodeDialog) {
-        var nodeName by remember { mutableStateOf("") }
-        var nodeUrl by remember { mutableStateOf("") }
+        var deviceName by remember { mutableStateOf("") }
+        var networkName by remember { mutableStateOf("") }
+        var networkSecret by remember { mutableStateOf("") }
 
         AppDialog(
             title = "添加节点",
             onDismissRequest = { showAddNodeDialog = false },
             confirmText = "添加",
-            confirmEnabled = nodeUrl.isNotBlank(),
+            confirmEnabled = networkName.isNotBlank() && networkSecret.isNotBlank(),
             onConfirm = {
-                val url = nodeUrl.trim()
-                if (url.isBlank()) {
+                val network = networkName.trim()
+                val secret = networkSecret.trim()
+                if (network.isBlank() || secret.isBlank()) {
                     return@AppDialog
                 }
-                val name = nodeName.trim().ifBlank { url }
-                val favorites = repo.loadFavoriteServers().toMutableList()
-                if (favorites.none { it.url == url }) {
-                    favorites.add(ServerEntry(name = name, url = url))
-                    repo.saveFavoriteServers(favorites)
-                }
-
                 val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
-                if (updatedConfigs.isNotEmpty()) {
-                    val targetIndex = updatedConfigs.indexOfFirst { it.instanceName == activeConfig?.instanceName }
-                        .takeIf { it >= 0 } ?: 0
-                    val target = updatedConfigs[targetIndex]
-                    if (target.servers.none { it == url }) {
-                        target.servers = (target.servers + url).toMutableList()
-                    }
-                    repo.saveNetworkConfigs(updatedConfigs)
-                    configs = updatedConfigs
+                val newConfig = NetworkConfig().apply {
+                    hostname = deviceName.trim()
+                    networkLabel = deviceName.trim().ifBlank { network }
+                    networkName = network
+                    networkSecret = secret
+                    this.isRunning = false
                 }
+                updatedConfigs.add(newConfig)
+                repo.saveNetworkConfigs(updatedConfigs)
+                configs = updatedConfigs
 
                 showAddNodeDialog = false
-                Toast.makeText(context, "节点已添加", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
             },
         ) {
             OutlinedTextField(
-                value = nodeName,
-                onValueChange = { nodeName = it },
-                label = { Text("节点名称") },
+                value = deviceName,
+                onValueChange = { deviceName = it },
+                label = { Text("设备名称") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = nodeUrl,
-                onValueChange = { nodeUrl = it },
-                label = { Text("节点地址") },
-                placeholder = { Text("tcp://example.com:11010") },
+                value = networkName,
+                onValueChange = { networkName = it },
+                label = { Text("网络名称") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = networkSecret,
+                onValueChange = { networkSecret = it },
+                label = { Text("网络密码") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
