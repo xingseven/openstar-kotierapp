@@ -9,6 +9,7 @@ data class NetworkConfig(
     var instanceName: String = generateInstanceName(),
     var networkLabel: String = "",
     var isRunning: Boolean = false,
+    var deviceType: String = "desktop",
 
     var hostname: String = "",
     var networkName: String = "",
@@ -157,6 +158,7 @@ data class NetworkConfig(
         "instance_name" to instanceName,
         "network_label" to networkLabel,
         "is_running" to isRunning,
+        "device_type" to deviceType,
         "hostname" to hostname,
         "network_name" to networkName,
         "network_secret" to networkSecret,
@@ -258,6 +260,7 @@ data class NetworkConfig(
                 instanceName = obj.optString("instance_name", generateInstanceName()),
                 networkLabel = obj.optString("network_label", ""),
                 isRunning = false,
+                deviceType = obj.optString("device_type", "desktop").ifBlank { "desktop" },
                 hostname = obj.optString("hostname", ""),
                 networkName = obj.optString("network_name", ""),
                 networkSecret = obj.optString("network_secret", ""),

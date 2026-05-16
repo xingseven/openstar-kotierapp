@@ -50,7 +50,9 @@ fun collectNodeInfosFromJson(jsonStr: String, instanceName: String): List<NodeIn
                     val ipv4Addr = route.optJSONObject("ipv4_addr")
                     val virtualIp = parseIpv4InetToString(ipv4Addr)
                     val hostname = route.optString("hostname", "")
-                    val latencyMs = route.optInt("path_latency", 0)
+                    val routeLatencyMs = route.optInt("path_latency", 0)
+                        .takeIf { it > 0 }
+                        ?: route.optInt("path_latency_latency_first", 0).takeIf { it > 0 }
 
                     val featureFlag = route.optJSONObject("feature_flag")
                     val isPublicServer = featureFlag?.optBoolean("is_public_server", false) ?: false
@@ -61,20 +63,45 @@ fun collectNodeInfosFromJson(jsonStr: String, instanceName: String): List<NodeIn
                     var rxBytes = 0L
                     var txBytes = 0L
                     var lossRate = 0.0
+                    var connLatencyMs = 0
 
                     if (peer != null) {
                         val conns = peer.optJSONArray("conns")
                         if (conns != null && conns.length() > 0) {
-                            val conn = conns.optJSONObject(0)
-                            if (conn != null) {
+                            for (connIndex in 0 until conns.length()) {
+                                val conn = conns.optJSONObject(connIndex) ?: continue
                                 val tunnel = conn.optJSONObject("tunnel")
-                                protocol = tunnel?.optString("tunnel_type", "")?.uppercase() ?: ""
-                                rxBytes = conn.optLong("rx_bytes", 0)
-                                txBytes = conn.optLong("tx_bytes", 0)
-                                lossRate = conn.optDouble("loss_rate", 0.0)
+                                val tunnelType = tunnel?.optString("tunnel_type", "")?.uppercase().orEmpty()
+
+                                // 新版结构主要在 conn.stats；旧版仍可能在 conn 顶层字段。
+                                val stats = conn.optJSONObject("stats")
+                                val candidateRx = stats?.optLong("rx_bytes", conn.optLong("rx_bytes", 0))
+                                    ?: conn.optLong("rx_bytes", 0)
+                                val candidateTx = stats?.optLong("tx_bytes", conn.optLong("tx_bytes", 0))
+                                    ?: conn.optLong("tx_bytes", 0)
+                                val candidateLoss = conn.optDouble("loss_rate", 0.0)
+                                val candidateLatencyMs = stats
+                                    ?.optLong("latency_us", 0L)
+                                    ?.takeIf { it > 0L }
+                                    ?.let { (it / 1000L).toInt() }
+                                    ?: conn.optInt("latency_ms", 0)
+
+                                if (tunnelType.isNotBlank() && protocol.isBlank()) {
+                                    protocol = tunnelType
+                                }
+                                if (candidateRx + candidateTx >= rxBytes + txBytes) {
+                                    rxBytes = candidateRx
+                                    txBytes = candidateTx
+                                    lossRate = candidateLoss
+                                }
+                                if (candidateLatencyMs > 0 && (connLatencyMs == 0 || candidateLatencyMs < connLatencyMs)) {
+                                    connLatencyMs = candidateLatencyMs
+                                }
                             }
                         }
                     }
+
+                    val latencyMs = routeLatencyMs ?: connLatencyMs
 
                     nodes.add(
                         NodeInfo(

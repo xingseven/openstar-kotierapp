@@ -31,7 +31,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Dns
@@ -51,6 +54,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -93,7 +97,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -125,6 +128,24 @@ private val navItems = listOf(
     NavItem("服务器", R.drawable.ic_nav_server),
     NavItem("设置", R.drawable.ic_nav_setup),
 )
+
+private data class DeviceIconOption(
+    val type: String,
+    val label: String,
+    val iconRes: Int,
+)
+
+private val deviceIconOptions = listOf(
+    DeviceIconOption(type = "phone", label = "手机", iconRes = R.drawable.phone),
+    DeviceIconOption(type = "desktop", label = "台式机", iconRes = R.drawable.computer),
+    DeviceIconOption(type = "laptop", label = "笔记本", iconRes = R.drawable.laptop),
+    DeviceIconOption(type = "server", label = "服务器", iconRes = R.drawable.server),
+    DeviceIconOption(type = "nas", label = "NAS", iconRes = R.drawable.nas),
+)
+
+private fun resolveDeviceIconRes(deviceType: String): Int {
+    return deviceIconOptions.firstOrNull { it.type == deviceType }?.iconRes ?: R.drawable.computer
+}
 
 @Composable
 fun HomePage() {
@@ -412,6 +433,7 @@ private fun DashboardScreen(
     val peerCount = peerNodes.size
     val avgLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.average().takeIf { !it.isNaN() }?.toInt() ?: 0
     val topLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.minOrNull() ?: 0
+    val avgLossRate = peerNodes.map { it.lossRate }.filter { it > 0.0 }.average().takeIf { !it.isNaN() } ?: 0.0
     val totalRx = nodes.sumOf { it.rxBytes }
     val totalTx = nodes.sumOf { it.txBytes }
 
@@ -419,6 +441,7 @@ private fun DashboardScreen(
         var deviceName by remember { mutableStateOf("") }
         var networkName by remember { mutableStateOf("") }
         var networkSecret by remember { mutableStateOf("") }
+        var selectedDeviceType by remember { mutableStateOf("desktop") }
 
         AppDialog(
             title = "添加节点",
@@ -435,6 +458,7 @@ private fun DashboardScreen(
                 val newConfig = NetworkConfig().apply {
                     hostname = deviceName.trim()
                     networkLabel = deviceName.trim().ifBlank { network }
+                    deviceType = selectedDeviceType
                     networkName = network
                     networkSecret = secret
                     this.isRunning = false
@@ -447,6 +471,34 @@ private fun DashboardScreen(
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
             },
         ) {
+            Text(
+                "设备图标",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(deviceIconOptions) { option ->
+                    val selected = selectedDeviceType == option.type
+                    OutlinedButton(
+                        onClick = { selectedDeviceType = option.type },
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (selected) 1.5.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Image(
+                                painter = painterResource(id = option.iconRes),
+                                contentDescription = option.label,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(option.label, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = deviceName,
                 onValueChange = { deviceName = it },
@@ -497,148 +549,116 @@ private fun DashboardScreen(
             var editDisableUdpHp by remember { mutableStateOf(cfg.disableUdpHolePunching) }
             var editDisableTcpHp by remember { mutableStateOf(cfg.disableTcpHolePunching) }
 
-            BasicAlertDialog(onDismissRequest = {
-                showNetworkConfigDialog = false
-                editingConfigInstanceName = null
-            }) {
-                Surface(
+            AppDialog(
+                title = "编辑配置",
+                onDismissRequest = {
+                    showNetworkConfigDialog = false
+                    editingConfigInstanceName = null
+                },
+                confirmText = "保存",
+                icon = Icons.Rounded.Wifi,
+                onConfirm = {
+                    val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                    val idx = updatedConfigs.indexOfFirst { it.instanceName == cfg.instanceName }
+                    if (idx >= 0) {
+                        updatedConfigs[idx] = updatedConfigs[idx].apply {
+                            networkLabel = editLabel
+                            hostname = editHostname
+                            networkName = editName
+                            networkSecret = editSecret
+                            dhcp = editDhcp
+                            ipv4 = editIpv4
+                            enableEncryption = editEncryption
+                            disableP2p = editDisableP2p
+                            latencyFirst = editLatencyFirst
+                            privateMode = editPrivateMode
+                            noTun = editNoTun
+                            disableIpv6 = editDisableIpv6
+                            disableUdpHolePunching = editDisableUdpHp
+                            disableTcpHolePunching = editDisableTcpHp
+                        }
+                        repo.saveNetworkConfigs(updatedConfigs)
+                        configs = updatedConfigs
+                    }
+                    showNetworkConfigDialog = false
+                    editingConfigInstanceName = null
+                },
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 480.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 14.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.Wifi,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text("编辑配置", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        }
-
-                        OutlinedTextField(
-                            value = editLabel,
-                            onValueChange = { editLabel = it },
-                            label = { Text("配置标签") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = editHostname,
-                            onValueChange = { editHostname = it },
-                            label = { Text("本机主机名") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = editName,
-                            onValueChange = { editName = it },
-                            label = { Text("网络名称") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = editSecret,
-                            onValueChange = { editSecret = it },
-                            label = { Text("网络密钥") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (secretVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { secretVisible = !secretVisible }, modifier = Modifier.size(24.dp)) {
-                                    Icon(
-                                        if (secretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            },
-                        )
-
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("DHCP 自动分配", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-                            Spacer(Modifier.weight(1f))
-                            Switch(checked = editDhcp, onCheckedChange = { editDhcp = it })
-                        }
-                        if (!editDhcp) {
-                            OutlinedTextField(
-                                value = editIpv4,
-                                onValueChange = { editIpv4 = it },
-                                label = { Text("静态 IPv4") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-                        TextButton(onClick = { showAdvanced = !showAdvanced }) {
-                            Text(if (showAdvanced) "收起详情" else "展开详情", fontSize = 13.sp)
-                        }
-                        if (showAdvanced) {
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                SwitchRow("启用加密", editEncryption) { editEncryption = it }
-                                SwitchRow("禁用 P2P", editDisableP2p) { editDisableP2p = it }
-                                SwitchRow("低延迟优先", editLatencyFirst) { editLatencyFirst = it }
-                                SwitchRow("私有模式", editPrivateMode) { editPrivateMode = it }
-                                SwitchRow("无 TUN 模式", editNoTun) { editNoTun = it }
-                                SwitchRow("禁用 IPv6", editDisableIpv6) { editDisableIpv6 = it }
-                                SwitchRow("禁用 UDP 打洞", editDisableUdpHp) { editDisableUdpHp = it }
-                                SwitchRow("禁用 TCP 打洞", editDisableTcpHp) { editDisableTcpHp = it }
+                    OutlinedTextField(
+                        value = editLabel,
+                        onValueChange = { editLabel = it },
+                        label = { Text("配置标签") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editHostname,
+                        onValueChange = { editHostname = it },
+                        label = { Text("本机主机名") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("网络名称") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editSecret,
+                        onValueChange = { editSecret = it },
+                        label = { Text("网络密钥") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (secretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { secretVisible = !secretVisible }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    if (secretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
                             }
-                        }
+                        },
+                    )
 
-                        Row(
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("DHCP 自动分配", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                        Spacer(Modifier.weight(1f))
+                        Switch(checked = editDhcp, onCheckedChange = { editDhcp = it })
+                    }
+                    if (!editDhcp) {
+                        OutlinedTextField(
+                            value = editIpv4,
+                            onValueChange = { editIpv4 = it },
+                            label = { Text("静态 IPv4") },
+                            singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                        ) {
-                            TextButton(onClick = {
-                                showNetworkConfigDialog = false
-                                editingConfigInstanceName = null
-                            }) {
-                                Text("取消")
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
-                                    val idx = updatedConfigs.indexOfFirst { it.instanceName == cfg.instanceName }
-                                    if (idx >= 0) {
-                                        updatedConfigs[idx] = updatedConfigs[idx].apply {
-                                            networkLabel = editLabel
-                                            hostname = editHostname
-                                            networkName = editName
-                                            networkSecret = editSecret
-                                            dhcp = editDhcp
-                                            ipv4 = editIpv4
-                                            enableEncryption = editEncryption
-                                            disableP2p = editDisableP2p
-                                            latencyFirst = editLatencyFirst
-                                            privateMode = editPrivateMode
-                                            noTun = editNoTun
-                                            disableIpv6 = editDisableIpv6
-                                            disableUdpHolePunching = editDisableUdpHp
-                                            disableTcpHolePunching = editDisableTcpHp
-                                        }
-                                        repo.saveNetworkConfigs(updatedConfigs)
-                                        configs = updatedConfigs
-                                    }
-                                    showNetworkConfigDialog = false
-                                    editingConfigInstanceName = null
-                                },
-                            ) {
-                                Text("保存")
-                            }
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                    TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                        Text(if (showAdvanced) "收起详情" else "展开详情", fontSize = 13.sp)
+                    }
+                    if (showAdvanced) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            SwitchRow("启用加密", editEncryption) { editEncryption = it }
+                            SwitchRow("禁用 P2P", editDisableP2p) { editDisableP2p = it }
+                            SwitchRow("低延迟优先", editLatencyFirst) { editLatencyFirst = it }
+                            SwitchRow("私有模式", editPrivateMode) { editPrivateMode = it }
+                            SwitchRow("无 TUN 模式", editNoTun) { editNoTun = it }
+                            SwitchRow("禁用 IPv6", editDisableIpv6) { editDisableIpv6 = it }
+                            SwitchRow("禁用 UDP 打洞", editDisableUdpHp) { editDisableUdpHp = it }
+                            SwitchRow("禁用 TCP 打洞", editDisableTcpHp) { editDisableTcpHp = it }
                         }
                     }
                 }
@@ -821,6 +841,13 @@ private fun DashboardScreen(
                                     fontSize = 34.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (topLatency > 0) "最快 ${topLatency}ms  ·  丢包 ${"%.1f".format(avgLossRate)}%" else "等待网络数据...",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                )
                             }
                         }
 
@@ -883,6 +910,15 @@ private fun DashboardScreen(
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             "下载 ${NodeInfo.formatBytes(totalRx)} / 上传 ${NodeInfo.formatBytes(totalTx)}",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                        )
+                        Text(
+                            if (currentDownloadRate > 0f || currentUploadRate > 0f) {
+                                "实时 ↓ ${formatSpeed(currentDownloadRate)} / ↑ ${formatSpeed(currentUploadRate)}"
+                            } else {
+                                "实时速率等待中..."
+                            },
                             color = Color(0xFF94A3B8),
                             fontSize = 11.sp,
                         )
@@ -1176,10 +1212,9 @@ private fun ConfigRow(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Wifi,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+            Image(
+                painter = painterResource(id = resolveDeviceIconRes(config.deviceType)),
+                contentDescription = "设备图标",
                 modifier = Modifier.size(16.dp),
             )
         }
