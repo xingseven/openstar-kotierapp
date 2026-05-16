@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -62,8 +63,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -253,6 +259,11 @@ private fun DashboardScreen(
     var switchingInstance by remember { mutableStateOf<String?>(null) }
     var pendingVpnConfig by remember { mutableStateOf<NetworkConfig?>(null) }
 
+    var downloadHistory by remember { mutableStateOf(List(30) { 0f }) }
+    var uploadHistory by remember { mutableStateOf(List(30) { 0f }) }
+    var currentDownloadRate by remember { mutableStateOf(0f) }
+    var currentUploadRate by remember { mutableStateOf(0f) }
+
     val activeConfig = remember(configs, runtimeState.runningInstances) {
         val runningName = runtimeState.runningInstances.firstOrNull()
         configs.firstOrNull { it.instanceName == runningName } ?: configs.firstOrNull()
@@ -274,6 +285,36 @@ private fun DashboardScreen(
         while (true) {
             nodes = EasyTierService.collectNodeInfos(instanceName)
             delay(3000)
+        }
+    }
+
+    // 实时网速追踪
+    LaunchedEffect(activeConfig?.instanceName, isRunning) {
+        val instanceName = activeConfig?.instanceName
+        if (!isRunning || instanceName.isNullOrBlank()) {
+            downloadHistory = List(30) { 0f }
+            uploadHistory = List(30) { 0f }
+            currentDownloadRate = 0f
+            currentUploadRate = 0f
+            return@LaunchedEffect
+        }
+        delay(500)
+        val initialNodes = EasyTierService.collectNodeInfos(instanceName)
+        var prevRx = initialNodes.sumOf { it.rxBytes }
+        var prevTx = initialNodes.sumOf { it.txBytes }
+        while (true) {
+            delay(2000)
+            val currentNodes = EasyTierService.collectNodeInfos(instanceName)
+            val curRx = currentNodes.sumOf { it.rxBytes }
+            val curTx = currentNodes.sumOf { it.txBytes }
+            val rxRate = ((curRx - prevRx).toFloat() / 2f).coerceAtLeast(0f)
+            val txRate = ((curTx - prevTx).toFloat() / 2f).coerceAtLeast(0f)
+            prevRx = curRx
+            prevTx = curTx
+            currentDownloadRate = rxRate
+            currentUploadRate = txRate
+            downloadHistory = (downloadHistory.drop(1) + rxRate).toList()
+            uploadHistory = (uploadHistory.drop(1) + txRate).toList()
         }
     }
 
@@ -611,46 +652,63 @@ private fun DashboardScreen(
                         fontSize = 12.sp,
                     )
                     Spacer(modifier = Modifier.height(14.dp))
-                    Card(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
                         ) {
-                            Text(
-                                text = "连接节点",
-                                color = Color.White.copy(alpha = 0.86f),
-                                fontSize = 12.sp,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = peerCount.toString(),
-                                color = Color.White,
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
-                                color = Color.White.copy(alpha = 0.82f),
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "延迟",
-                                color = Color.White.copy(alpha = 0.86f),
-                                fontSize = 12.sp,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = if (avgLatency > 0) "${avgLatency}ms" else "--",
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                            ) {
+                                Text(
+                                    text = "连接节点",
+                                    color = Color.White.copy(alpha = 0.86f),
+                                    fontSize = 12.sp,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = peerCount.toString(),
+                                    color = Color.White,
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
+                                    color = Color.White.copy(alpha = 0.82f),
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "延迟",
+                                    color = Color.White.copy(alpha = 0.86f),
+                                    fontSize = 12.sp,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (avgLatency > 0) "${avgLatency}ms" else "--",
+                                    color = Color.White,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
+                        ) {
+                            NetworkChart(
+                                downloadSamples = downloadHistory,
+                                uploadSamples = uploadHistory,
+                                downloadRate = currentDownloadRate,
+                                uploadRate = currentUploadRate,
+                                modifier = Modifier.padding(6.dp),
                             )
                         }
                     }
@@ -1065,5 +1123,98 @@ private fun ReadOnlySwitchRow(label: String, checked: Boolean) {
     ) {
         Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp)
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+@Composable
+private fun NetworkChart(
+    downloadSamples: List<Float>,
+    uploadSamples: List<Float>,
+    downloadRate: Float,
+    uploadRate: Float,
+    modifier: Modifier = Modifier,
+) {
+    val maxValue = remember(downloadSamples, uploadSamples) {
+        (downloadSamples + uploadSamples).maxOrNull()?.coerceAtLeast(1f) ?: 1f
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Text(
+                text = "↓ ${formatSpeed(downloadRate)}",
+                color = Color(0xFF67E8F9),
+                fontSize = 9.sp,
+            )
+            Text(
+                text = "↑ ${formatSpeed(uploadRate)}",
+                color = Color(0xFF4ADE80),
+                fontSize = 9.sp,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp),
+        ) {
+            val w = size.width
+            val h = size.height
+            val p = 4f
+
+            val gridColor = Color.White.copy(alpha = 0.1f)
+            for (i in 0..2) {
+                val y = p + (h - p * 2) * i / 2
+                drawLine(gridColor, Offset(p, y), Offset(w - p, y), strokeWidth = 0.5f)
+            }
+
+            fun drawLinePath(
+                samples: List<Float>,
+                lineColor: Color,
+                fillColor: Color,
+            ) {
+                if (samples.size < 2) return
+                val stepX = (w - p * 2) / (samples.size - 1)
+                val path = Path()
+                samples.forEachIndexed { index, value ->
+                    val x = p + index * stepX
+                    val ratio = (value / maxValue).coerceIn(0f, 1f)
+                    val y = h - p - (h - p * 2) * ratio
+                    if (index == 0) path.moveTo(x, y)
+                    else path.lineTo(x, y)
+                }
+                val fillPath = Path().apply {
+                    addPath(path)
+                    lineTo(p + (samples.size - 1) * stepX, h - p)
+                    lineTo(p, h - p)
+                    close()
+                }
+                drawPath(fillPath, fillColor)
+                drawPath(path, lineColor, style = Stroke(width = 2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+
+            drawLinePath(downloadSamples, Color(0xFF67E8F9), Color(0xFF67E8F9).copy(alpha = 0.12f))
+            drawLinePath(uploadSamples, Color(0xFF4ADE80), Color(0xFF4ADE80).copy(alpha = 0.12f))
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "实时网速",
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 9.sp,
+        )
+    }
+}
+
+private fun formatSpeed(bytesPerSec: Float): String {
+    return when {
+        bytesPerSec >= 1_000_000 -> String.format("%.1f MB/s", bytesPerSec / 1_000_000)
+        bytesPerSec >= 1_000 -> String.format("%.1f KB/s", bytesPerSec / 1_000)
+        bytesPerSec > 0 -> String.format("%.0f B/s", bytesPerSec)
+        else -> "0 B/s"
     }
 }
