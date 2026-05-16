@@ -491,7 +491,7 @@ fun OneClickPage() {
 @Composable
 private fun ModeButton(selected: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     val bgColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "modeBg"
+        targetValue = if (selected) Color(0xFF1F6FFF) else Color.Transparent, label = "modeBg"
     )
     val textColor by animateColorAsState(
         targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurface, label = "modeText"
@@ -535,7 +535,7 @@ private fun HostMode(
                         "虚拟 IP: $virtualIp",
                         fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color(0xFF1F6FFF)
                     )
                 }
             }
@@ -545,7 +545,7 @@ private fun HostMode(
                 enabled = !isLoading,
                 modifier = Modifier.fillMaxWidth().height(44.dp),
                 colors = if (isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
-                         else ButtonDefaults.buttonColors()
+                         else ButtonDefaults.buttonColors(containerColor = Color(0xFF1F6FFF))
             ) {
                 AppIcon(if (isRunning) AppIcons.Stop else AppIcons.Play, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
@@ -606,7 +606,8 @@ private fun GuestMode(
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onJoin, enabled = !isLoading && !isRunning,
-                modifier = Modifier.fillMaxWidth().height(44.dp)
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F6FFF))
             ) {
                 AppIcon(AppIcons.Login, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
@@ -628,7 +629,7 @@ private fun GuestMode(
                             "本机虚拟 IP: $virtualIp",
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color(0xFF1F6FFF)
                         )
                     }
                     if (hostVirtualIp.isNotBlank()) {
@@ -636,7 +637,7 @@ private fun GuestMode(
                             "房主虚拟 IP: $hostVirtualIp",
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color(0xFF1F6FFF)
                         )
                     } else {
                         Text(

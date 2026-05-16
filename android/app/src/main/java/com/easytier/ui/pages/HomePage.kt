@@ -129,25 +129,20 @@ private val navItems = listOf(
 @Composable
 fun HomePage() {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
-    var showNetworkPage by rememberSaveable { mutableStateOf(false) }
     var showLogPage by remember { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
     val view = LocalView.current
     val background = MaterialTheme.colorScheme.background
-    val isDashboard = !showNetworkPage && !showLogPage && selectedIndex == 0
+    val isDashboard = !showLogPage && selectedIndex == 0
 
-    BackHandler(enabled = showNetworkPage || showLogPage) {
-        when {
-            showLogPage -> showLogPage = false
-            showNetworkPage -> showNetworkPage = false
-        }
+    BackHandler(enabled = showLogPage) {
+        if (showLogPage) showLogPage = false
     }
 
-    LaunchedEffect(selectedIndex, showNetworkPage, showLogPage, background, view) {
+    LaunchedEffect(selectedIndex, showLogPage, background, view) {
         val activity = view.context as? Activity ?: return@LaunchedEffect
         val controller = WindowCompat.getInsetsController(activity.window, view)
-        val mainTab = !showNetworkPage && !showLogPage && selectedIndex == 0
-        if (mainTab) {
+        if (isDashboard) {
             activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
             controller.isAppearanceLightStatusBars = false
         } else {
@@ -181,7 +176,7 @@ fun HomePage() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     navItems.forEachIndexed { index, item ->
-                        val selected = !showNetworkPage && selectedIndex == index
+                        val selected = selectedIndex == index
                         val tint = if (selected) Color(0xFF1F6FFF) else Color(0xFF98A2B3)
                         Box(
                             modifier = Modifier
@@ -191,7 +186,6 @@ fun HomePage() {
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                 ) {
-                                    showNetworkPage = false
                                     showLogPage = false
                                     selectedIndex = index
                                 },
@@ -229,14 +223,11 @@ fun HomePage() {
         ) {
             when {
                 showLogPage -> LogPage(onBack = { showLogPage = false })
-                showNetworkPage -> NetworkConfigPage()
                 else -> stateHolder.SaveableStateProvider("tab_$selectedIndex") {
                     when (selectedIndex) {
                         0 -> DashboardScreen(
-                            onOpenNetwork = { showNetworkPage = true },
                             onOpenOneClick = { selectedIndex = 1 },
                             onOpenServers = { selectedIndex = 2 },
-                            onOpenImportExport = { showNetworkPage = true },
                         )
 
                         1 -> Column(Modifier.statusBarsPadding()) { OneClickPage() }
@@ -252,10 +243,8 @@ fun HomePage() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DashboardScreen(
-    onOpenNetwork: () -> Unit,
     onOpenOneClick: () -> Unit,
     onOpenServers: () -> Unit,
-    onOpenImportExport: () -> Unit,
 ) {
     val context = LocalContext.current as Activity
     val repo = LocalSettingsRepository.current
@@ -343,6 +332,27 @@ private fun DashboardScreen(
         } else {
             switchingInstance = null
             Toast.makeText(context, "VPN 授权被拒绝", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val jsonStr = inputStream?.bufferedReader()?.use { it.readText() } ?: return@launch
+                val importedConfig = com.easytier.data.NetworkConfigImport.fromText(jsonStr) ?: return@launch
+                importedConfig.instanceName = NetworkConfig.generateInstanceName()
+                val updatedConfigs = repo.loadNetworkConfigs().toMutableList()
+                updatedConfigs.add(importedConfig)
+                repo.saveNetworkConfigs(updatedConfigs)
+                configs = updatedConfigs
+                Toast.makeText(context, "配置导入成功", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -895,8 +905,8 @@ private fun DashboardScreen(
                             )
                             MetricActionItem(
                                 icon = Icons.Rounded.FileUpload,
-                                title = "导入导出",
-                                onClick = onOpenImportExport,
+                                title = "导入",
+                                onClick = { importFileLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
                             )
                         }
                     }
