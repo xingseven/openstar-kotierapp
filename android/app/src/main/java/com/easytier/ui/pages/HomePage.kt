@@ -279,11 +279,18 @@ private fun DashboardScreen(
         }
         scope.launch {
             switchingInstance = cfg.instanceName
+
+            // 点击已在运行的节点 → 关闭它
             if (runtimeState.runningInstances.contains(cfg.instanceName)) {
                 EasyTierService.stopNetwork(cfg.instanceName)
                 EasyTierService.refreshRuntimeState()
                 switchingInstance = null
                 return@launch
+            }
+
+            // 先停掉其他运行中的实例，保证只运行一个
+            for (name in runtimeState.runningInstances) {
+                EasyTierService.stopNetwork(name)
             }
 
             val result = EasyTierService.startNetwork(cfg)
