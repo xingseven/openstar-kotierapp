@@ -134,6 +134,7 @@ fun HomePage() {
     val view = LocalView.current
     val colorScheme = MaterialTheme.colorScheme
     val background = colorScheme.background
+    val topBarChromeColor = colorScheme.surfaceVariant
     val bottomBarColor = colorScheme.surface
     val isDashboard = !showLogPage && selectedIndex == 0
 
@@ -141,15 +142,15 @@ fun HomePage() {
         if (showLogPage) showLogPage = false
     }
 
-    LaunchedEffect(selectedIndex, showLogPage, background, view) {
+    LaunchedEffect(selectedIndex, showLogPage, background, topBarChromeColor, view) {
         val activity = view.context as? Activity ?: return@LaunchedEffect
         val controller = WindowCompat.getInsetsController(activity.window, view)
         if (isDashboard) {
             activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
             controller.isAppearanceLightStatusBars = false
         } else {
-            activity.window.statusBarColor = Color.Transparent.toArgb()
-            val lightBars = background.luminance() > 0.5f
+            activity.window.statusBarColor = topBarChromeColor.toArgb()
+            val lightBars = topBarChromeColor.luminance() > 0.5f
             controller.isAppearanceLightStatusBars = lightBars
         }
         activity.window.navigationBarColor = bottomBarColor.toArgb()
