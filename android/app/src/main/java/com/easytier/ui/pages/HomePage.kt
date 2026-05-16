@@ -632,6 +632,36 @@ private fun DashboardScreen(
                     .statusBarsPadding()
                     .padding(top = 10.dp, bottom = 16.dp),
             ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 4.dp)
+                        .size(width = 150.dp, height = 132.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.30f),
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.Transparent,
+                                ),
+                                radius = 240f,
+                            ),
+                        ),
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 28.dp)
+                        .size(width = 58.dp, height = 116.dp)
+                        .clip(
+                            androidx.compose.foundation.shape.RoundedCornerShape(
+                                topStart = 16.dp,
+                                bottomStart = 16.dp,
+                            ),
+                        )
+                        .background(Color.White.copy(alpha = 0.18f)),
+                )
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
