@@ -75,9 +75,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -228,6 +233,7 @@ fun HomePage() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DashboardScreen(
     onOpenNetwork: () -> Unit,
@@ -336,14 +342,11 @@ private fun DashboardScreen(
 
     val localNode = nodes.firstOrNull { it.isLocal }
     val peerNodes = nodes.filterNot { it.isLocal }
-    val totalDeviceCount = nodes.size
-    val onlineCount = nodes.count { it.virtualIp.isNotBlank() }
     val peerCount = peerNodes.size
     val avgLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.average().takeIf { !it.isNaN() }?.toInt() ?: 0
     val topLatency = peerNodes.map { it.latencyMs }.filter { it > 0 }.minOrNull() ?: 0
     val totalRx = nodes.sumOf { it.rxBytes }
     val totalTx = nodes.sumOf { it.txBytes }
-    val onlineRatio = if (totalDeviceCount <= 0) 0f else (onlineCount.toFloat() / totalDeviceCount.toFloat()).coerceIn(0f, 1f)
 
     if (showAddNodeDialog) {
         var deviceName by remember { mutableStateOf("") }
@@ -401,120 +404,98 @@ private fun DashboardScreen(
         }
     }
 
-    // 网络配置弹窗
+    // 网络配置弹窗（只读查看）
     if (showNetworkConfigDialog) {
         val cfg = activeConfig
         if (cfg == null) {
             showNetworkConfigDialog = false
         } else {
-            var labelText by remember(cfg) { mutableStateOf(cfg.networkLabel) }
-            var hostnameText by remember(cfg) { mutableStateOf(cfg.hostname) }
-            var networkNameText by remember(cfg) { mutableStateOf(cfg.networkName) }
-            var networkSecretText by remember(cfg) { mutableStateOf(cfg.networkSecret) }
-            var dhcpEnabled by remember(cfg) { mutableStateOf(cfg.dhcp) }
-            var ipv4Text by remember(cfg) { mutableStateOf(cfg.ipv4) }
             var showAdvanced by remember { mutableStateOf(false) }
             var secretVisible by remember { mutableStateOf(false) }
 
-            var enableEncryption by remember(cfg) { mutableStateOf(cfg.enableEncryption) }
-            var disableP2p by remember(cfg) { mutableStateOf(cfg.disableP2p) }
-            var latencyFirst by remember(cfg) { mutableStateOf(cfg.latencyFirst) }
-            var privateMode by remember(cfg) { mutableStateOf(cfg.privateMode) }
-            var noTun by remember(cfg) { mutableStateOf(cfg.noTun) }
-            var disableIpv6 by remember(cfg) { mutableStateOf(cfg.disableIpv6) }
-            var disableUdpHole by remember(cfg) { mutableStateOf(cfg.disableUdpHolePunching) }
-            var disableTcpHole by remember(cfg) { mutableStateOf(cfg.disableTcpHolePunching) }
-
-            AlertDialog(
-                onDismissRequest = { showNetworkConfigDialog = false },
-                title = { Text("网络配置", fontWeight = FontWeight.Bold) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        cfg.networkLabel = labelText
-                        cfg.hostname = hostnameText
-                        cfg.networkName = networkNameText
-                        cfg.networkSecret = networkSecretText
-                        cfg.dhcp = dhcpEnabled
-                        cfg.ipv4 = ipv4Text
-                        cfg.enableEncryption = enableEncryption
-                        cfg.disableP2p = disableP2p
-                        cfg.latencyFirst = latencyFirst
-                        cfg.privateMode = privateMode
-                        cfg.noTun = noTun
-                        cfg.disableIpv6 = disableIpv6
-                        cfg.disableUdpHolePunching = disableUdpHole
-                        cfg.disableTcpHolePunching = disableTcpHole
-                        repo.saveNetworkConfigs(configs)
-                        showNetworkConfigDialog = false
-                    }) { Text("保存") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showNetworkConfigDialog = false }) { Text("取消") }
-                },
-                text = {
+            BasicAlertDialog(onDismissRequest = { showNetworkConfigDialog = false }) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White,
+                    tonalElevation = 0.dp,
+                ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        OutlinedTextField(
-                            value = labelText, onValueChange = { labelText = it },
-                            label = { Text("配置标签") }, singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = hostnameText, onValueChange = { hostnameText = it },
-                            label = { Text("本机主机名") }, singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = networkNameText, onValueChange = { networkNameText = it },
-                            label = { Text("网络名称") }, singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = networkSecretText, onValueChange = { networkSecretText = it },
-                            label = { Text("网络密钥") }, singleLine = true,
-                            visualTransformation = if (secretVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { secretVisible = !secretVisible }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Rounded.Wifi,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text("网络配置", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ConfigInfoRow("配置标签", cfg.networkLabel.ifBlank { "--" })
+                            ConfigInfoRow("本机主机名", cfg.hostname.ifBlank { "--" })
+                            ConfigInfoRow("网络名称", cfg.networkName.ifBlank { "--" })
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text("网络密钥", color = Color(0xFF98A2B3), fontSize = 12.sp)
+                                Spacer(Modifier.weight(1f))
+                                Text(
+                                    if (secretVisible) cfg.networkSecret else "••••••••",
+                                    color = Color(0xFF111827),
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                IconButton(
+                                    onClick = { secretVisible = !secretVisible },
+                                    modifier = Modifier.size(24.dp),
+                                ) {
                                     Icon(
                                         if (secretVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                         contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
                                     )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text("DHCP 自动分配", modifier = Modifier.weight(1f), fontSize = 14.sp)
-                            Switch(checked = dhcpEnabled, onCheckedChange = { dhcpEnabled = it })
+                            }
+                            ConfigInfoRow("DHCP 自动分配", if (cfg.dhcp) "是" else "否")
+                            if (!cfg.dhcp && cfg.ipv4.isNotBlank()) {
+                                ConfigInfoRow("静态 IPv4", cfg.ipv4)
+                            }
                         }
-                        if (!dhcpEnabled) {
-                            OutlinedTextField(
-                                value = ipv4Text, onValueChange = { ipv4Text = it },
-                                label = { Text("静态 IPv4") }, singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
+
                         HorizontalDivider(color = Color(0xFFEFF2F6))
                         TextButton(onClick = { showAdvanced = !showAdvanced }) {
-                            Text(if (showAdvanced) "收起高级设置" else "展开高级设置", fontSize = 13.sp)
+                            Text(if (showAdvanced) "收起详情" else "展开详情", fontSize = 13.sp)
                         }
                         AnimatedVisibility(visible = showAdvanced) {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                SwitchRow("启用加密", enableEncryption) { enableEncryption = it }
-                                SwitchRow("禁用 P2P", disableP2p) { disableP2p = it }
-                                SwitchRow("低延迟优先", latencyFirst) { latencyFirst = it }
-                                SwitchRow("私有模式", privateMode) { privateMode = it }
-                                SwitchRow("无 TUN 模式", noTun) { noTun = it }
-                                SwitchRow("禁用 IPv6", disableIpv6) { disableIpv6 = it }
-                                SwitchRow("禁用 UDP 打洞", disableUdpHole) { disableUdpHole = it }
-                                SwitchRow("禁用 TCP 打洞", disableTcpHole) { disableTcpHole = it }
+                                ReadOnlySwitchRow("启用加密", cfg.enableEncryption)
+                                ReadOnlySwitchRow("禁用 P2P", cfg.disableP2p)
+                                ReadOnlySwitchRow("低延迟优先", cfg.latencyFirst)
+                                ReadOnlySwitchRow("私有模式", cfg.privateMode)
+                                ReadOnlySwitchRow("无 TUN 模式", cfg.noTun)
+                                ReadOnlySwitchRow("禁用 IPv6", cfg.disableIpv6)
+                                ReadOnlySwitchRow("禁用 UDP 打洞", cfg.disableUdpHolePunching)
+                                ReadOnlySwitchRow("禁用 TCP 打洞", cfg.disableTcpHolePunching)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            TextButton(onClick = { showNetworkConfigDialog = false }) {
+                                Text("关闭")
                             }
                         }
                     }
-                },
-            )
+                }
+            }
         }
     }
 
@@ -630,92 +611,52 @@ private fun DashboardScreen(
                         fontSize = 12.sp,
                     )
                     Spacer(modifier = Modifier.height(14.dp))
-                    Row(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
                     ) {
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        progress = { onlineRatio },
-                                        modifier = Modifier.size(90.dp),
-                                        strokeWidth = 8.dp,
-                                        color = Color(0xFF67E8F9),
-                                        trackColor = Color.White.copy(alpha = 0.26f),
-                                    )
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = onlineCount.toString(),
-                                            color = Color.White,
-                                            fontSize = 29.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Text(
-                                            text = "在线设备",
-                                            color = Color.White.copy(alpha = 0.85f),
-                                            fontSize = 11.sp,
-                                        )
-                                    }
-                                }
-                            }
+                            Text(
+                                text = "连接节点",
+                                color = Color.White.copy(alpha = 0.86f),
+                                fontSize = 12.sp,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = peerCount.toString(),
+                                color = Color.White,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
+                                color = Color.White.copy(alpha = 0.82f),
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "延迟",
+                                color = Color.White.copy(alpha = 0.86f),
+                                fontSize = 12.sp,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (avgLatency > 0) "${avgLatency}ms" else "--",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
-
-                        Card(
-                            modifier = Modifier.weight(1.2f),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                            ) {
-                                Text(
-                                    text = "连接节点",
-                                    color = Color.White.copy(alpha = 0.86f),
-                                    fontSize = 12.sp,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = peerCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 30.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
-                                    color = Color.White.copy(alpha = 0.82f),
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "延迟",
-                                    color = Color.White.copy(alpha = 0.86f),
-                                    fontSize = 12.sp,
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (avgLatency > 0) "${avgLatency}ms" else "--",
-                                    color = Color.White,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
+                    }
                     }
                 }
             }
-        }
 
         item {
             Card(
@@ -851,6 +792,13 @@ private fun DashboardScreen(
                                 config = cfg,
                                 isRunning = isCfgRunning,
                                 onStart = { startConfig(cfg) },
+                                onEdit = onOpenNetwork,
+                                onDelete = {
+                                    val updated = configs.toMutableList()
+                                    updated.removeAt(index)
+                                    repo.saveNetworkConfigs(updated)
+                                    configs = updated
+                                },
                                 enabled = switchingInstance == null || switchingInstance != cfg.instanceName,
                             )
                             if (index < configs.lastIndex) {
@@ -1001,8 +949,11 @@ private fun ConfigRow(
     config: NetworkConfig,
     isRunning: Boolean,
     onStart: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     enabled: Boolean = true,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1041,6 +992,34 @@ private fun ConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "更多操作",
+                    tint = Color(0xFF98A2B3),
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text("修改配置") },
+                    onClick = {
+                        menuExpanded = false
+                        onEdit()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("删除配置", color = Color(0xFFE53E3E)) },
+                    onClick = {
+                        menuExpanded = false
+                        onDelete()
+                    },
+                )
+            }
+        }
         Switch(
             checked = isRunning,
             onCheckedChange = { onStart() },
@@ -1057,5 +1036,34 @@ private fun SwitchRow(label: String, checked: Boolean, onChanged: (Boolean) -> U
     ) {
         Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp)
         Switch(checked = checked, onCheckedChange = onChanged)
+    }
+}
+
+@Composable
+private fun ConfigInfoRow(label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Color(0xFF98A2B3), fontSize = 12.sp)
+        Spacer(Modifier.weight(1f))
+        Text(
+            value,
+            color = Color(0xFF111827),
+            fontSize = 13.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ReadOnlySwitchRow(label: String, checked: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
