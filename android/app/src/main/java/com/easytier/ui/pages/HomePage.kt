@@ -665,17 +665,34 @@ private fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    if (nodes.isEmpty()) {
-                        Text(
-                            text = if (isRunning) "等待节点数据..." else "节点未启动",
-                            color = Color(0xFF98A2B3),
-                            fontSize = 12.sp,
-                        )
+                    if (isRunning) {
+                        if (nodes.isEmpty()) {
+                            Text(
+                                text = "等待节点数据...",
+                                color = Color(0xFF98A2B3),
+                                fontSize = 12.sp,
+                            )
+                        } else {
+                            nodes.forEachIndexed { index, item ->
+                                DeviceRow(item)
+                                if (index < nodes.lastIndex) {
+                                    HorizontalDivider(color = Color(0xFFEFF2F6))
+                                }
+                            }
+                        }
                     } else {
-                        nodes.forEachIndexed { index, item ->
-                            DeviceRow(item)
-                            if (index < nodes.lastIndex) {
-                                HorizontalDivider(color = Color(0xFFEFF2F6))
+                        if (configs.isEmpty()) {
+                            Text(
+                                text = "暂无配置，点击右上角添加节点",
+                                color = Color(0xFF98A2B3),
+                                fontSize = 12.sp,
+                            )
+                        } else {
+                            configs.forEachIndexed { index, cfg ->
+                                ConfigRow(cfg)
+                                if (index < configs.lastIndex) {
+                                    HorizontalDivider(color = Color(0xFFEFF2F6))
+                                }
                             }
                         }
                     }
@@ -783,6 +800,55 @@ private fun DeviceRow(node: NodeInfo) {
         Text(
             text = if (node.isLocal) "本机" else "在线",
             color = Color(0xFF1F6FFF),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun ConfigRow(config: NetworkConfig) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .background(Color(0xFFF5F8FF)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Wifi,
+                contentDescription = null,
+                tint = Color(0xFF1F6FFF),
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(modifier = Modifier.size(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = config.networkLabel.ifBlank { config.hostname.ifBlank { "未命名节点" } },
+                color = Color(0xFF111827),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "网络: ${config.networkName}",
+                color = Color(0xFF98A2B3),
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text = "未连接",
+            color = Color(0xFF98A2B3),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
