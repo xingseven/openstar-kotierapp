@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -73,8 +74,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.rememberScrollState
@@ -98,6 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.easytier.R
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import com.easytier.service.EasyTierService
@@ -632,36 +636,6 @@ private fun DashboardScreen(
                     .statusBarsPadding()
                     .padding(top = 10.dp, bottom = 16.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 8.dp, end = 4.dp)
-                        .size(width = 150.dp, height = 132.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.30f),
-                                    Color.White.copy(alpha = 0.08f),
-                                    Color.Transparent,
-                                ),
-                                radius = 240f,
-                            ),
-                        ),
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 28.dp)
-                        .size(width = 58.dp, height = 116.dp)
-                        .clip(
-                            androidx.compose.foundation.shape.RoundedCornerShape(
-                                topStart = 16.dp,
-                                bottomStart = 16.dp,
-                            ),
-                        )
-                        .background(Color.White.copy(alpha = 0.18f)),
-                )
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -681,65 +655,107 @@ private fun DashboardScreen(
                         color = Color.White.copy(alpha = 0.86f),
                         fontSize = 12.sp,
                     )
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(350.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Card(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .fillMaxSize()
+                                    .padding(horizontal = 14.dp, vertical = 16.dp),
                             ) {
                                 Text(
                                     text = "连接节点",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = peerCount.toString(),
                                     color = Color.White,
-                                    fontSize = 30.sp,
+                                    fontSize = 54.sp,
                                     fontWeight = FontWeight.Bold,
+                                    lineHeight = 56.sp,
                                 )
                                 Text(
                                     text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
                                     color = Color.White.copy(alpha = 0.82f),
-                                    fontSize = 11.sp,
+                                    fontSize = 14.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(20.dp))
                                 Text(
                                     text = "延迟",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = if (avgLatency > 0) "${avgLatency}ms" else "--",
                                     color = Color.White,
-                                    fontSize = 24.sp,
+                                    fontSize = 40.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            NetworkChart(
-                                downloadSamples = downloadHistory,
-                                uploadSamples = uploadHistory,
-                                downloadRate = currentDownloadRate,
-                                uploadRate = currentUploadRate,
-                                modifier = Modifier.padding(6.dp),
-                            )
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0x0DFFFFFF)),
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.hero_beijing),
+                                        contentDescription = "网络插画",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Transparent,
+                                                        Color(0x331768E8),
+                                                    ),
+                                                ),
+                                            ),
+                                    )
+                                }
+                            }
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2F80E9)),
+                            ) {
+                                NetworkChart(
+                                    downloadSamples = downloadHistory,
+                                    uploadSamples = uploadHistory,
+                                    downloadRate = currentDownloadRate,
+                                    uploadRate = currentUploadRate,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                )
+                            }
                         }
                     }
                     }
