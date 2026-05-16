@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,6 +53,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -117,7 +119,7 @@ data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem("首页", R.drawable.ic_nav_network),
+    NavItem("网络", R.drawable.ic_nav_network),
     NavItem("联机", R.drawable.ic_nav_online),
     NavItem("服务器", R.drawable.ic_nav_server),
     NavItem("我的", R.drawable.ic_nav_setup),
@@ -343,7 +345,7 @@ private fun DashboardScreen(
 
     fun startConfig(cfg: NetworkConfig) {
         if (cfg.networkName.isBlank()) {
-            Toast.makeText(context, "请先到网络页配置网络", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "该配置缺少网络名称，请编辑配置", Toast.LENGTH_SHORT).show()
             return
         }
         scope.launch {
@@ -462,7 +464,9 @@ private fun DashboardScreen(
 
             BasicAlertDialog(onDismissRequest = { showNetworkConfigDialog = false }) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
                     shape = RoundedCornerShape(14.dp),
                     color = Color.White,
                     tonalElevation = 0.dp,
@@ -470,6 +474,7 @@ private fun DashboardScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
                             .padding(horizontal = 14.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -564,11 +569,12 @@ private fun DashboardScreen(
                 OutlinedTextField(
                     value = newUrl,
                     onValueChange = { newUrl = it },
-                    placeholder = { Text("服务器地址") },
+                    placeholder = { Text("服务器地址", fontSize = 12.sp) },
                     singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 Button(
                     onClick = {
                         if (newUrl.isNotBlank()) {
@@ -579,9 +585,9 @@ private fun DashboardScreen(
                             newUrl = ""
                         }
                     },
-                    shape = RoundedCornerShape(499.5.dp),
-                    modifier = Modifier.height(46.dp),
-                ) { Text("添加") }
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                ) { Text("添加", fontSize = 12.sp) }
             }
             if (servers.isEmpty()) {
                 Text("暂无服务器", color = Color(0xFF98A2B3), fontSize = 12.sp)
@@ -805,17 +811,12 @@ private fun DashboardScreen(
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
                             MetricActionItem(
                                 icon = Icons.Rounded.Wifi,
                                 title = "网络配置",
                                 onClick = { showNetworkConfigDialog = true },
-                            )
-                            MetricActionItem(
-                                icon = Icons.Rounded.Speed,
-                                title = "一键联机",
-                                onClick = onOpenOneClick,
                             )
                             MetricActionItem(
                                 icon = Icons.Rounded.Dns,
