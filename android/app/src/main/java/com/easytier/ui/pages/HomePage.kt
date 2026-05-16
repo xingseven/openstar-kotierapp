@@ -113,6 +113,7 @@ import com.easytier.R
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import com.easytier.service.EasyTierService
+import com.easytier.service.LogService
 import com.easytier.ui.components.AppDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -318,6 +319,14 @@ private fun DashboardScreen(
     LaunchedEffect(Unit) {
         EasyTierService.refreshRuntimeState()
         configs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
+        LogService.info(
+            "首页初始化配置列表: ${
+                configs.joinToString(" | ") {
+                    "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                }
+            }",
+            source = "HomePage"
+        )
     }
 
     LaunchedEffect(activeConfig?.instanceName, isRunning) {
@@ -492,8 +501,20 @@ private fun DashboardScreen(
                 } else {
                     updatedConfigs.add(newConfig)
                 }
+                LogService.info(
+                    "添加节点提交前: instance=${newConfig.instanceName}, label=${newConfig.networkLabel}, host=${newConfig.hostname}, network=${newConfig.networkName}, secretLen=${newConfig.networkSecret.length}, total=${updatedConfigs.size}",
+                    source = "HomePage"
+                )
                 repo.saveNetworkConfigs(updatedConfigs)
                 configs = updatedConfigs
+                LogService.info(
+                    "添加节点提交后内存列表: ${
+                        configs.joinToString(" | ") {
+                            "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                        }
+                    }",
+                    source = "HomePage"
+                )
 
                 showAddNodeDialog = false
                 Toast.makeText(context, "设备配置已添加", Toast.LENGTH_SHORT).show()
@@ -569,6 +590,12 @@ private fun DashboardScreen(
         val cfg = editingConfigInstanceName
             ?.let { targetInstance -> configs.firstOrNull { it.instanceName == targetInstance } }
             ?: activeConfig
+        if (cfg != null) {
+            LogService.info(
+                "准备打开编辑配置: target=${cfg.instanceName}, label=${cfg.networkLabel}, host=${cfg.hostname}, network=${cfg.networkName}, secretLen=${cfg.networkSecret.length}",
+                source = "HomePage"
+            )
+        }
         if (cfg == null) {
             showNetworkConfigDialog = false
             editingConfigInstanceName = null
@@ -602,6 +629,10 @@ private fun DashboardScreen(
                     val updatedConfigs = sanitizeDashboardConfigs(repo.loadNetworkConfigs())
                     val idx = updatedConfigs.indexOfFirst { it.instanceName == cfg.instanceName }
                     if (idx >= 0) {
+                        LogService.info(
+                            "编辑配置保存前: instance=${cfg.instanceName}, label=$editLabel, host=$editHostname, network=$editName, secretLen=${editSecret.length}",
+                            source = "HomePage"
+                        )
                         updatedConfigs[idx] = updatedConfigs[idx].apply {
                             networkLabel = editLabel
                             hostname = editHostname
@@ -620,6 +651,14 @@ private fun DashboardScreen(
                         }
                         repo.saveNetworkConfigs(updatedConfigs)
                         configs = updatedConfigs
+                        LogService.info(
+                            "编辑配置保存后内存列表: ${
+                                configs.joinToString(" | ") {
+                                    "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                                }
+                            }",
+                            source = "HomePage"
+                        )
                     }
                     showNetworkConfigDialog = false
                     editingConfigInstanceName = null
@@ -1075,9 +1114,21 @@ private fun DashboardScreen(
                                 },
                                 onDelete = {
                                     val updated = configs.toMutableList()
+                                    LogService.info(
+                                        "删除节点前: instance=${cfg.instanceName}, label=${cfg.networkLabel}, host=${cfg.hostname}, network=${cfg.networkName}, secretLen=${cfg.networkSecret.length}",
+                                        source = "HomePage"
+                                    )
                                     updated.removeAt(index)
                                     repo.saveNetworkConfigs(updated)
                                     configs = updated
+                                    LogService.info(
+                                        "删除节点后内存列表: ${
+                                            configs.joinToString(" | ") {
+                                                "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                                            }
+                                        }",
+                                        source = "HomePage"
+                                    )
                                 },
                                 enabled = switchingInstance == null || switchingInstance != cfg.instanceName,
                             )

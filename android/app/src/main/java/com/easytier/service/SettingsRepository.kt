@@ -100,12 +100,24 @@ class SettingsRepository(context: Context) {
     // ── 网络配置持久化 ──
 
     fun saveNetworkConfigs(jsonArray: JSONArray) {
-        prefs.edit().putString("network_configs", jsonArray.toString()).commit()
+        val saved = prefs.edit().putString("network_configs", jsonArray.toString()).commit()
+        LogService.info(
+            "network_configs 已写入 SharedPreferences: success=$saved, size=${jsonArray.length()}",
+            source = "SettingsRepository"
+        )
     }
 
     fun saveNetworkConfigs(configs: List<NetworkConfig>) {
         val jsonArray = JSONArray()
         configs.forEach { jsonArray.put(JSONObject(it.toJson())) }
+        LogService.info(
+            "准备保存网络配置: ${
+                configs.joinToString(" | ") {
+                    "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                }
+            }",
+            source = "SettingsRepository"
+        )
         saveNetworkConfigs(jsonArray)
     }
 
@@ -122,8 +134,16 @@ class SettingsRepository(context: Context) {
             val obj = jsonArray.optJSONObject(index) ?: continue
             configs.add(NetworkConfig.fromJson(obj))
         }
-
-        return if (configs.isEmpty()) mutableListOf(NetworkConfig()) else configs
+        val result = if (configs.isEmpty()) mutableListOf(NetworkConfig()) else configs
+        LogService.info(
+            "读取网络配置: ${
+                result.joinToString(" | ") {
+                    "${it.instanceName}[label=${it.networkLabel}, host=${it.hostname}, network=${it.networkName}, secretLen=${it.networkSecret.length}]"
+                }
+            }",
+            source = "SettingsRepository"
+        )
+        return result
     }
 
     fun addServerToFirstNetworkConfig(serverUrl: String): Boolean {
