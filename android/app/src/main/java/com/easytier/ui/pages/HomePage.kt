@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -634,7 +635,7 @@ private fun DashboardScreen(
                     )
                     .padding(horizontal = 16.dp)
                     .statusBarsPadding()
-                    .padding(top = 8.dp, bottom = 14.dp),
+                    .padding(top = 6.dp, bottom = 4.dp),
             ) {
                 Column {
                     Row(
@@ -655,11 +656,11 @@ private fun DashboardScreen(
                         color = Color.White.copy(alpha = 0.86f),
                         fontSize = 12.sp,
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(252.dp),
+                            .height(165.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Card(
@@ -671,14 +672,14 @@ private fun DashboardScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 14.dp, vertical = 16.dp),
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                             ) {
                                 Text(
                                     text = "连接节点",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = peerCount.toString(),
                                     color = Color.White,
@@ -693,13 +694,13 @@ private fun DashboardScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "延迟",
                                     color = Color.White.copy(alpha = 0.86f),
                                     fontSize = 12.sp,
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = if (avgLatency > 0) "${avgLatency}ms" else "--",
                                     color = Color.White,
@@ -709,32 +710,24 @@ private fun DashboardScreen(
                             }
                         }
 
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Box(
+                            Image(
+                                painter = painterResource(id = R.drawable.hero_beijing),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(top = (-92).dp, start = 2.dp, end = (-8).dp),
-                                contentAlignment = Alignment.TopCenter,
-                            ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.hero_beijing),
-                                    contentDescription = "网络插画",
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(190.dp),
-                                )
-                            }
+                                    .fillMaxSize()
+                                    .align(Alignment.CenterEnd)
+                                    .offset(x = 15.dp),
+                            )
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f),
+                                    .align(Alignment.BottomCenter),
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF2F80E9)),
                             ) {
                                 NetworkChart(
@@ -742,7 +735,7 @@ private fun DashboardScreen(
                                     uploadSamples = uploadHistory,
                                     downloadRate = currentDownloadRate,
                                     uploadRate = currentUploadRate,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                 )
                             }
                         }
