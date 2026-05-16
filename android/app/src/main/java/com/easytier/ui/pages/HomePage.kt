@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -632,12 +633,24 @@ private fun DashboardScreen(
                         brush = Brush.verticalGradient(
                             colors = listOf(Color(0xFF1F6FFF), Color(0xFF2A8CFF)),
                         ),
-                    )
-                    .padding(horizontal = 16.dp)
-                    .statusBarsPadding()
-                    .padding(top = 6.dp, bottom = 4.dp),
+                    ),
             ) {
-                Column {
+                Image(
+                    painter = painterResource(id = R.drawable.hero_beijing),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .requiredSize(width = 300.dp, height = 220.dp)
+                        .align(Alignment.TopEnd)
+                        .offset(y = 80.dp),
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .statusBarsPadding()
+                        .padding(top = 6.dp, bottom = 4.dp),
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -667,7 +680,7 @@ private fun DashboardScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1AFFFFFF)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xCCE8F0FF)),
                         ) {
                             Column(
                                 modifier = Modifier
@@ -715,20 +728,11 @@ private fun DashboardScreen(
                                 .weight(1f)
                                 .fillMaxHeight(),
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.hero_beijing),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .align(Alignment.CenterEnd)
-                                    .offset(x = 15.dp),
-                            )
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .align(Alignment.BottomCenter),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2F80E9)),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xCC2F80E9)),
                             ) {
                                 NetworkChart(
                                     downloadSamples = downloadHistory,
