@@ -270,6 +270,45 @@ private fun DashboardScreen(
         }
     }
 
+    fun startConfig(cfg: NetworkConfig) {
+        if (cfg.networkName.isBlank()) {
+            Toast.makeText(context, "请先到网络页配置网络", Toast.LENGTH_SHORT).show()
+            return
+        }
+        scope.launch {
+            isNodeSwitching = true
+            if (runtimeState.runningInstances.contains(cfg.instanceName)) {
+                EasyTierService.stopNetwork(cfg.instanceName)
+                EasyTierService.refreshRuntimeState()
+                isNodeSwitching = false
+                return@launch
+            }
+
+            val result = EasyTierService.startNetwork(cfg)
+            if (!result.success) {
+                Toast.makeText(context, "启动失败: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
+                isNodeSwitching = false
+                return@launch
+            }
+
+            if (cfg.noTun) {
+                EasyTierService.refreshRuntimeState()
+                isNodeSwitching = false
+                return@launch
+            }
+
+            val intent: Intent? = VpnService.prepare(context)
+            if (intent != null) {
+                pendingVpnConfig = cfg
+                vpnLauncher.launch(intent)
+            } else {
+                startVpnForConfig(context, cfg)
+            }
+            EasyTierService.refreshRuntimeState()
+            isNodeSwitching = false
+        }
+    }
+
     val localNode = nodes.firstOrNull { it.isLocal }
     val peerNodes = nodes.filterNot { it.isLocal }
     val totalDeviceCount = nodes.size
@@ -488,43 +527,8 @@ private fun DashboardScreen(
                     )
                     Button(
                         onClick = {
-                            val cfg = activeConfig
-                            if (cfg == null || cfg.networkName.isBlank()) {
-                                Toast.makeText(context, "请先到网络页配置网络", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-                            scope.launch {
-                                isNodeSwitching = true
-                                if (isRunning) {
-                                    EasyTierService.stopNetwork(cfg.instanceName)
-                                    EasyTierService.refreshRuntimeState()
-                                    isNodeSwitching = false
-                                    return@launch
-                                }
-
-                                val result = EasyTierService.startNetwork(cfg)
-                                if (!result.success) {
-                                    Toast.makeText(context, "启动失败: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
-                                    isNodeSwitching = false
-                                    return@launch
-                                }
-
-                                if (cfg.noTun) {
-                                    EasyTierService.refreshRuntimeState()
-                                    isNodeSwitching = false
-                                    return@launch
-                                }
-
-                                val intent: Intent? = VpnService.prepare(context)
-                                if (intent != null) {
-                                    pendingVpnConfig = cfg
-                                    vpnLauncher.launch(intent)
-                                } else {
-                                    startVpnForConfig(context, cfg)
-                                }
-                                EasyTierService.refreshRuntimeState()
-                                isNodeSwitching = false
-                            }
+                            val cfg = activeConfig ?: return@Button
+                            startConfig(cfg)
                         },
                         enabled = !isNodeSwitching,
                         colors = ButtonDefaults.buttonColors(
@@ -689,7 +693,12 @@ private fun DashboardScreen(
                             )
                         } else {
                             configs.forEachIndexed { index, cfg ->
-                                ConfigRow(cfg)
+                                val isCfgRunning = runtimeState.runningInstances.contains(cfg.instanceName)
+                                ConfigRow(
+                                    config = cfg,
+                                    isRunning = isCfgRunning,
+                                    onStart = { startConfig(cfg) },
+                                )
                                 if (index < configs.lastIndex) {
                                     HorizontalDivider(color = Color(0xFFEFF2F6))
                                 }
@@ -807,7 +816,11 @@ private fun DeviceRow(node: NodeInfo) {
 }
 
 @Composable
-private fun ConfigRow(config: NetworkConfig) {
+private fun ConfigRow(
+    config: NetworkConfig,
+    isRunning: Boolean,
+    onStart: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -846,11 +859,19 @@ private fun ConfigRow(config: NetworkConfig) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(
-            text = "未连接",
-            color = Color(0xFF98A2B3),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Button(
+            onClick = onStart,
+            enabled = true,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isRunning) Color(0xFFEF4444) else Color(0xFF1F6FFF),
+                contentColor = Color.White,
+            ),
+        ) {
+            Text(
+                text = if (isRunning) "关闭" else "开启",
+                fontSize = 12.sp,
+            )
+        }
     }
 }
