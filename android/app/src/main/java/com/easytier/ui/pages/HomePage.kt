@@ -122,7 +122,7 @@ private val navItems = listOf(
     NavItem("网络", R.drawable.ic_nav_network),
     NavItem("联机", R.drawable.ic_nav_online),
     NavItem("服务器", R.drawable.ic_nav_server),
-    NavItem("我的", R.drawable.ic_nav_setup),
+    NavItem("设置", R.drawable.ic_nav_setup),
 )
 
 @Composable
@@ -142,10 +142,11 @@ fun HomePage() {
         }
     }
 
-    LaunchedEffect(isDashboard, background, view) {
+    LaunchedEffect(selectedIndex, showNetworkPage, showLogPage, background, view) {
         val activity = view.context as? Activity ?: return@LaunchedEffect
         val controller = WindowCompat.getInsetsController(activity.window, view)
-        if (isDashboard) {
+        val mainTab = !showNetworkPage && !showLogPage
+        if (mainTab) {
             activity.window.statusBarColor = Color(0xFF1F6FFF).toArgb()
             activity.window.navigationBarColor = Color.White.toArgb()
             controller.isAppearanceLightStatusBars = false
@@ -842,7 +843,7 @@ private fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "设备列表",
+                            text = "节点列表",
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF111827),
                             modifier = Modifier.weight(1f),
@@ -883,7 +884,7 @@ private fun DashboardScreen(
                                 config = cfg,
                                 isRunning = isCfgRunning,
                                 onStart = { startConfig(cfg) },
-                                onEdit = onOpenNetwork,
+                                onEdit = { showNetworkConfigDialog = true },
                                 onDelete = {
                                     val updated = configs.toMutableList()
                                     updated.removeAt(index)
@@ -1094,6 +1095,7 @@ private fun ConfigRow(
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
+                modifier = Modifier.background(Color.White, shape = RoundedCornerShape(8.dp)),
             ) {
                 DropdownMenuItem(
                     text = { Text("修改配置") },
