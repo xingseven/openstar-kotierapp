@@ -4,6 +4,10 @@
 
 当前仓库以 Android 客户端为主，界面使用 Kotlin + Jetpack Compose，实现上通过 JNI 对接 EasyTier 原生能力，并在仓库内保留了面向 Android 的后端抽象层，方便持续演进。
 
+## APP截图
+
+<img src="images/phone.png" width="360" alt="手机端截图"/>
+
 ## 项目现状
 
 - 当前主应用是 Android 版 `kotier`
