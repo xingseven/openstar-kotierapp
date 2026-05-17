@@ -4,6 +4,7 @@ import kotlin.random.Random
 
 private const val PRIMARY_BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 private const val LEGACY_BASE32 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+private val QT_GUEST_COMPATIBLE_CODE = Regex("^[A-Z2-7-]+$")
 
 fun base32Encode(data: ByteArray, alphabet: String = PRIMARY_BASE32): String {
     val result = StringBuilder()
@@ -62,17 +63,33 @@ private fun decodeConnectionCodeWithAlphabet(code: String, alphabet: String): Pa
 
 fun generateRoomCredentials(): Pair<String, String> {
     val charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789*&#$!"
-    val networkIdBytes = ByteArray(7).apply {
+    repeat(64) {
+        val networkIdBytes = ByteArray(7).apply {
+            this[0] = 'Q'.code.toByte()
+            this[1] = 'E'.code.toByte()
+            for (index in 2 until 7) {
+                this[index] = charset[Random.nextInt(charset.length)].code.toByte()
+            }
+        }
+        val passwordBytes = ByteArray(8) { charset[Random.nextInt(charset.length)].code.toByte() }
+        val networkId = "QtET-OneClick-" + networkIdBytes.decodeToString()
+        val password = passwordBytes.decodeToString()
+        val encoded = encodeConnectionCode(networkId, password)
+        if (encoded.isNotEmpty() && QT_GUEST_COMPATIBLE_CODE.matches(encoded)) {
+            return networkId to password
+        }
+    }
+
+    // 极少数情况下兜底返回一组凭证，避免理论上的随机重试耗尽。
+    val fallbackNetworkIdBytes = ByteArray(7).apply {
         this[0] = 'Q'.code.toByte()
         this[1] = 'E'.code.toByte()
         for (index in 2 until 7) {
             this[index] = charset[Random.nextInt(charset.length)].code.toByte()
         }
     }
-    val passwordBytes = ByteArray(8) { charset[Random.nextInt(charset.length)].code.toByte() }
-    val networkId = "QtET-OneClick-" + networkIdBytes.decodeToString()
-    val password = passwordBytes.decodeToString()
-    return networkId to password
+    val fallbackPasswordBytes = ByteArray(8) { charset[Random.nextInt(charset.length)].code.toByte() }
+    return "QtET-OneClick-" + fallbackNetworkIdBytes.decodeToString() to fallbackPasswordBytes.decodeToString()
 }
 
 fun encodeConnectionCode(networkId: String, password: String): String {
