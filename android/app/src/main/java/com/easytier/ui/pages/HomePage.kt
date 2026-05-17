@@ -1027,15 +1027,10 @@ private fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            "下载 ${NodeInfo.formatBytes(totalRx)} / 上传 ${NodeInfo.formatBytes(totalTx)}",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp,
-                        )
-                        Text(
                             if (currentDownloadRate > 0f || currentUploadRate > 0f) {
-                                "实时 ↓ ${formatSpeed(currentDownloadRate)} / ↑ ${formatSpeed(currentUploadRate)}"
+                                "↓ ${formatSpeed(currentDownloadRate)} / ↑ ${formatSpeed(currentUploadRate)}"
                             } else {
-                                "实时速率等待中..."
+                                "暂无实时速率"
                             },
                             color = Color(0xFF94A3B8),
                             fontSize = 11.sp,
