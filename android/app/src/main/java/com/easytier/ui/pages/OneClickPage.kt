@@ -67,6 +67,8 @@ fun OneClickPage() {
     var pendingStartIsHost by remember { mutableStateOf<Boolean?>(null) }
     var pendingStartIp by remember { mutableStateOf("") }
     var pendingStartRoutes by remember { mutableStateOf<List<String>>(emptyList()) }
+    var hostPeerCount by remember { mutableStateOf(0) }
+    var guestPeerCount by remember { mutableStateOf(0) }
 
     val hostConfig = hostSession?.toNetworkConfig()
     val guestConfig = guestSession?.toNetworkConfig()
@@ -165,7 +167,7 @@ fun OneClickPage() {
                 setLoading(false)
                 setStatus(
                     if (isHost) {
-                        "网络已启动，分享下方编码给好友"
+                        "网络已启动，分享上方联机码给好友"
                     } else {
                         "已成功加入网络 ${cfg.networkName}，房主 IP: $guestHostVirtualIp"
                     },
@@ -288,6 +290,30 @@ fun OneClickPage() {
         }
     }
 
+    // 轮询联机人数
+    LaunchedEffect(hostRunning, hostConfig?.instanceName) {
+        if (!hostRunning || hostConfig?.instanceName.isNullOrBlank()) {
+            hostPeerCount = 0
+            return@LaunchedEffect
+        }
+        while (true) {
+            val nodes = EasyTierService.collectNodeInfos(hostConfig!!.instanceName)
+            hostPeerCount = nodes.count { !it.isLocal }
+            delay(5000)
+        }
+    }
+    LaunchedEffect(guestRunning, guestConfig?.instanceName) {
+        if (!guestRunning || guestConfig?.instanceName.isNullOrBlank()) {
+            guestPeerCount = 0
+            return@LaunchedEffect
+        }
+        while (true) {
+            val nodes = EasyTierService.collectNodeInfos(guestConfig!!.instanceName)
+            guestPeerCount = nodes.count { !it.isLocal }
+            delay(5000)
+        }
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = { CompactTopBar("一键联机") }
@@ -325,6 +351,7 @@ fun OneClickPage() {
                     generatedCode = hostSession?.generatedCode.orEmpty(),
                     hostConfig = hostConfig,
                     virtualIp = hostSession?.virtualIp.orEmpty(),
+                    peerCount = hostPeerCount,
                     onStart = {
                         scope.launch {
                             setLoading(true); setStatus("", false)
@@ -398,6 +425,7 @@ fun OneClickPage() {
                     hostConfig = guestConfig,
                     virtualIp = guestSession?.virtualIp.orEmpty(),
                     hostVirtualIp = guestHostVirtualIp,
+                    peerCount = guestPeerCount,
                     onJoin = {
                         scope.launch {
                             if (otherRunningInstances.isNotEmpty()) {
@@ -512,7 +540,7 @@ private fun ModeButton(selected: Boolean, icon: androidx.compose.ui.graphics.vec
 @Composable
 private fun HostMode(
     isRunning: Boolean, isLoading: Boolean, generatedCode: String,
-    hostConfig: NetworkConfig?, virtualIp: String,
+    hostConfig: NetworkConfig?, virtualIp: String, peerCount: Int,
     onStart: () -> Unit, onStop: () -> Unit, onCopy: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -538,6 +566,13 @@ private fun HostMode(
                         color = Color(0xFF1F6FFF)
                     )
                 }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "在线设备: $peerCount",
+                    fontSize = 13.sp,
+                    color = Color(0xFF4CAF50),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             Spacer(Modifier.height(14.dp))
             Button(
@@ -585,8 +620,7 @@ private fun HostMode(
 private fun GuestMode(
     guestCode: String, onGuestCodeChange: (String) -> Unit,
     isRunning: Boolean, isLoading: Boolean, hostConfig: NetworkConfig?,
-    virtualIp: String,
-    hostVirtualIp: String,
+    virtualIp: String, hostVirtualIp: String, peerCount: Int,
     onJoin: () -> Unit, onLeave: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -646,6 +680,12 @@ private fun GuestMode(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Text(
+                        "在线设备: $peerCount",
+                        fontSize = 12.sp,
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
                 TextButton(onClick = onLeave) { Text("离开") }
             }

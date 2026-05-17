@@ -804,6 +804,7 @@ private fun DashboardScreen(
 
         AppDialog(
             title = "节点管理",
+            icon = Icons.Rounded.Dns,
             onDismissRequest = { showServerManagerDialog = false },
             confirmText = "确定",
             onConfirm = {
@@ -952,26 +953,25 @@ private fun DashboardScreen(
                                     fontWeight = FontWeight.Bold,
                                     lineHeight = 52.sp,
                                 )
-                                Text(
-                                    text = localNode?.hostname?.ifBlank { "本机" } ?: "本机",
-                                    color = Color.White.copy(alpha = 0.82f),
-                                    fontSize = 14.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "延迟",
-                                    color = Color.White.copy(alpha = 0.86f),
-                                    fontSize = 12.sp,
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (avgLatency > 0) "${avgLatency}ms" else "--",
-                                    color = Color.White,
-                                    fontSize = 34.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = "延迟",
+                                            color = Color.White.copy(alpha = 0.86f),
+                                            fontSize = 12.sp,
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (avgLatency > 0) "${avgLatency}ms" else "--",
+                                            color = Color.White,
+                                            fontSize = 42.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = if (topLatency > 0) "最快 ${topLatency}ms  ·  丢包 ${"%.1f".format(avgLossRate)}%" else "等待网络数据...",
