@@ -940,19 +940,6 @@ private fun DashboardScreen(
                                     .fillMaxSize()
                                     .padding(horizontal = 14.dp, vertical = 10.dp),
                             ) {
-                                Text(
-                                    text = "连接节点",
-                                    color = Color.White.copy(alpha = 0.86f),
-                                    fontSize = 12.sp,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = peerCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 50.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    lineHeight = 52.sp,
-                                )
                                 Box(
                                     modifier = Modifier.weight(1f),
                                     contentAlignment = Alignment.Center,
@@ -1160,6 +1147,7 @@ private fun DashboardScreen(
                             ConfigRow(
                                 config = cfg,
                                 isRunning = isCfgRunning,
+                                peerCount = peerCount,
                                 onStart = { startConfig(cfg) },
                                 onEdit = {
                                     editingConfigInstanceName = cfg.instanceName
@@ -1348,6 +1336,7 @@ private fun ConfigRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     enabled: Boolean = true,
+    peerCount: Int = 0,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -1357,6 +1346,13 @@ private fun ConfigRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(if (isRunning) Color(0xFF4CAF50) else Color(0xFFCBD5E1)),
+        )
+        Spacer(modifier = Modifier.size(8.dp))
         Box(
             modifier = Modifier
                 .size(28.dp)
@@ -1381,7 +1377,8 @@ private fun ConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "网络: ${config.networkName.ifBlank { "未设置" }}",
+                text = if (isRunning) "网络: ${config.networkName.ifBlank { "未设置" }}  ·  在线设备: $peerCount"
+                       else "网络: ${config.networkName.ifBlank { "未设置" }}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 maxLines = 1,
