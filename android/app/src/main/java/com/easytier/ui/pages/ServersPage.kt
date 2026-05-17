@@ -189,7 +189,7 @@ fun ServersPage() {
                             ) {
                             AppIcon(AppIcons.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("社区公共节点", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                Text("社区公共节点由“刚刚”免费提供", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 Text("${publicNodes.count { !it.serverUrl.contains("*") }} 个", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.width(4.dp))
                                 AppIcon(
