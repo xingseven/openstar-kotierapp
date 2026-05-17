@@ -1037,21 +1037,8 @@ private fun DashboardScreen(
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("延迟状态", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(
-                                text = if (topLatency > 0) "最快 ${topLatency}ms" else "暂无",
-                                color = Color(0xFF1F6FFF),
-                                fontSize = 11.sp,
-                            )
-                        }
+                        Text("配置设置", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            if (avgLatency > 0) "平均 ${avgLatency}ms" else "暂无延迟数据",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp,
-                        )
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1341,13 +1328,6 @@ private fun ConfigRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(if (isRunning) Color(0xFF4CAF50) else Color(0xFFCBD5E1)),
-        )
-        Spacer(modifier = Modifier.size(8.dp))
         Box(
             modifier = Modifier
                 .size(28.dp)
