@@ -49,6 +49,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -313,6 +314,7 @@ private fun DashboardScreen(
     var addNetworkName by rememberSaveable { mutableStateOf("") }
     var addNetworkSecret by rememberSaveable { mutableStateOf("") }
     var addSelectedDeviceType by rememberSaveable { mutableStateOf("desktop") }
+    var addSelectedServers by remember { mutableStateOf(repo.loadFavoriteServers().map { it.url }.toMutableList()) }
     var editShowAdvanced by rememberSaveable { mutableStateOf(false) }
     var editSecretVisible by rememberSaveable { mutableStateOf(false) }
     var editLabelState by rememberSaveable { mutableStateOf("") }
@@ -329,6 +331,7 @@ private fun DashboardScreen(
     var editDisableIpv6State by rememberSaveable { mutableStateOf(false) }
     var editDisableUdpHpState by rememberSaveable { mutableStateOf(false) }
     var editDisableTcpHpState by rememberSaveable { mutableStateOf(false) }
+    var editServersState by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val activeConfig = remember(configs, runtimeState.runningInstances) {
         val runningName = runtimeState.runningInstances.firstOrNull()
@@ -522,6 +525,7 @@ private fun DashboardScreen(
                     deviceType = addSelectedDeviceType
                     networkName = network
                     networkSecret = secret
+                    servers = addSelectedServers.toMutableList()
                     this.isRunning = false
                 }
                 val placeholderIndex = updatedConfigs.indexOfFirst { it.isPlaceholderConfig() }
@@ -616,6 +620,38 @@ private fun DashboardScreen(
                 textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                 modifier = compactFieldModifier,
             )
+            val favoriteServers = remember { repo.loadFavoriteServers() }
+            if (favoriteServers.isNotEmpty()) {
+                Text("入口服务器", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ) {
+                    Column(modifier = Modifier.padding(6.dp)) {
+                        favoriteServers.forEach { server ->
+                            val checked = addSelectedServers.contains(server.url)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    addSelectedServers = if (checked) {
+                                        addSelectedServers.toMutableList().also { it.remove(server.url) }
+                                    } else {
+                                        addSelectedServers.toMutableList().also { it.add(server.url) }
+                                    }
+                                }.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(checked = checked, onCheckedChange = null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Column {
+                                    Text(server.name, fontSize = 12.sp)
+                                    Text(server.url, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -652,6 +688,7 @@ private fun DashboardScreen(
                 editDisableIpv6State = cfg.disableIpv6
                 editDisableUdpHpState = cfg.disableUdpHolePunching
                 editDisableTcpHpState = cfg.disableTcpHolePunching
+                editServersState = cfg.servers.toList()
                 LogService.info(
                     "编辑弹窗状态已同步: label=$editLabelState, host=$editHostnameState, network=$editNetworkNameState, secretLen=${editNetworkSecretState.length}",
                     source = "HomePage"
@@ -693,6 +730,7 @@ private fun DashboardScreen(
                             disableIpv6 = editDisableIpv6State
                             disableUdpHolePunching = editDisableUdpHpState
                             disableTcpHolePunching = editDisableTcpHpState
+                            servers = editServersState.toMutableList()
                         }
                         repo.saveNetworkConfigs(updatedConfigs)
                         configs = updatedConfigs
@@ -759,6 +797,39 @@ private fun DashboardScreen(
                             }
                         },
                     )
+
+                    val editFavoriteServers = remember { repo.loadFavoriteServers() }
+                    if (editFavoriteServers.isNotEmpty()) {
+                        Text("入口服务器", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        ) {
+                            Column(modifier = Modifier.padding(6.dp)) {
+                                editFavoriteServers.forEach { server ->
+                                    val checked = editServersState.contains(server.url)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clickable {
+                                            editServersState = if (checked) {
+                                                editServersState.toMutableList().also { it.remove(server.url) }
+                                            } else {
+                                                editServersState.toMutableList().also { it.add(server.url) }
+                                            }
+                                        }.padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(checked = checked, onCheckedChange = null, modifier = Modifier.size(20.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Column {
+                                            Text(server.name, fontSize = 12.sp)
+                                            Text(server.url, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("DHCP 自动分配", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
