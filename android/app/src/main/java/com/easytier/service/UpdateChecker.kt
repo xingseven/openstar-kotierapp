@@ -3,7 +3,7 @@ package com.easytier.service
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Environment
+import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,9 +22,11 @@ data class UpdateInfo(
 class UpdateChecker(private val context: Context) {
 
     companion object {
+        private const val TAG = "UpdateChecker"
         private const val VERSION_CHECK_API =
-            "https://sevencn.com/api/software/version-check?name=kotier"
+            "https://kotier.openstars.org/version.json"
         private const val TIMEOUT = 15_000
+        private const val DOWNLOAD_TIMEOUT = 120_000
     }
 
     sealed class Result {
@@ -59,6 +61,7 @@ class UpdateChecker(private val context: Context) {
                 ?: return@withContext Result.Unavailable("未找到下载链接")
 
             val currentVersion = com.easytier.BuildConfig.VERSION_NAME
+            Log.d(TAG, "最新版本: $latestVersion, 当前版本: $currentVersion, 下载地址: $downloadUrl")
 
             if (compareVersions(latestVersion, currentVersion) <= 0) {
                 return@withContext Result.Unavailable("已是最新版本 ($currentVersion)")
@@ -74,6 +77,7 @@ class UpdateChecker(private val context: Context) {
                 )
             )
         } catch (e: Exception) {
+            Log.e(TAG, "版本检查失败", e)
             Result.Unavailable("网络错误: ${e.localizedMessage ?: "未知错误"}")
         }
     }
@@ -91,11 +95,13 @@ class UpdateChecker(private val context: Context) {
                 }
 
                 val conn = URL(info.downloadUrl).openConnection() as HttpURLConnection
-                conn.connectTimeout = TIMEOUT
-                conn.readTimeout = TIMEOUT
+                conn.connectTimeout = DOWNLOAD_TIMEOUT
+                conn.readTimeout = DOWNLOAD_TIMEOUT
                 conn.instanceFollowRedirects = true
 
+                Log.d(TAG, "下载开始: ${info.downloadUrl}")
                 val total = conn.contentLength
+                Log.d(TAG, "文件大小: $total bytes")
                 val input = conn.inputStream
                 val output = FileOutputStream(file)
                 val buffer = ByteArray(8192)
@@ -107,7 +113,7 @@ class UpdateChecker(private val context: Context) {
                     if (bytes == -1) break
                     output.write(buffer, 0, bytes)
                     downloaded += bytes
-                    val pct = if (total > 0) (downloaded * 100 / total) else -1
+                    val pct = if (total > 0) (downloaded.toLong() * 100 / total).toInt() else -1
                     if (pct != lastReported) {
                         onProgress(pct)
                         lastReported = pct
@@ -119,22 +125,30 @@ class UpdateChecker(private val context: Context) {
                 installApk(file)
                 null
             } catch (e: Exception) {
+                Log.e(TAG, "下载失败", e)
                 "下载失败: ${e.localizedMessage ?: "未知错误"}"
             }
         }
 
     private fun installApk(file: File) {
+        Log.d(TAG, "安装APK: ${file.absolutePath}, 大小: ${file.length()}")
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
             file
         )
+        Log.d(TAG, "URI: $uri")
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+            Log.d(TAG, "安装意图已发送")
+        } catch (e: Exception) {
+            Log.e(TAG, "启动安装界面失败", e)
+        }
     }
 
     private fun compareVersions(v1: String, v2: String): Int {
