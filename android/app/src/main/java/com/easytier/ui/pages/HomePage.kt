@@ -111,6 +111,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.easytier.R
+import com.easytier.backend.collectProxyCidrsFromJson
 import com.easytier.data.NetworkConfig
 import com.easytier.data.NodeInfo
 import com.easytier.service.EasyTierService
@@ -1281,25 +1282,30 @@ private suspend fun startVpnForConfig(context: Activity, cfg: NetworkConfig) {
     } else {
         ""
     }
+    var routes = emptyList<String>()
 
-    if (assignedIp.isBlank()) {
-        repeat(20) {
-            val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
-            val local = currentNodes.find { it.isLocal }
-            if (local != null && local.virtualIp.isNotBlank()) {
-                assignedIp = local.virtualIp
-                return@repeat
-            }
-            delay(300)
+    val attempts = if (assignedIp.isBlank()) 20 else 5
+    repeat(attempts) {
+        val currentNodes = EasyTierService.collectNodeInfos(cfg.instanceName)
+        val local = currentNodes.find { it.isLocal }
+        if (local != null && local.virtualIp.isNotBlank()) {
+            assignedIp = local.virtualIp
         }
+        val networkInfoJson = EasyTierService.collectNetworkInfoJson()
+        if (networkInfoJson != null) {
+            routes = collectProxyCidrsFromJson(networkInfoJson, cfg.instanceName)
+        }
+        if (assignedIp.isNotBlank()) return@repeat
+        delay(300)
     }
 
+    LogService.info("主页启动 VPN: instance=${cfg.instanceName}, ip=$assignedIp, routes=$routes", source = "HomePage")
     EasyTierService.startVpnService(
         context,
         cfg.instanceName,
         assignedIp.ifBlank { NetworkConfig.vpnIpv4Address(cfg.ipv4).ifBlank { "10.144.144.1" } },
         24,
-        emptyList(),
+        routes,
     )
 }
 
