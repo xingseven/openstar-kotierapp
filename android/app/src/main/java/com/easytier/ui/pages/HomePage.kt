@@ -324,6 +324,7 @@ private fun DashboardScreen(
     var editDhcpState by rememberSaveable { mutableStateOf(true) }
     var editIpv4State by rememberSaveable { mutableStateOf("") }
     var editEncryptionState by rememberSaveable { mutableStateOf(true) }
+    var editP2pOnlyState by rememberSaveable { mutableStateOf(false) }
     var editDisableP2pState by rememberSaveable { mutableStateOf(false) }
     var editLatencyFirstState by rememberSaveable { mutableStateOf(false) }
     var editPrivateModeState by rememberSaveable { mutableStateOf(true) }
@@ -681,7 +682,8 @@ private fun DashboardScreen(
                 editDhcpState = cfg.dhcp
                 editIpv4State = cfg.ipv4
                 editEncryptionState = cfg.enableEncryption
-                editDisableP2pState = cfg.disableP2p
+                editP2pOnlyState = cfg.p2pOnly
+                editDisableP2pState = cfg.disableP2p && !cfg.p2pOnly
                 editLatencyFirstState = cfg.latencyFirst
                 editPrivateModeState = cfg.privateMode
                 editNoTunState = cfg.noTun
@@ -723,7 +725,8 @@ private fun DashboardScreen(
                             dhcp = editDhcpState
                             ipv4 = editIpv4State
                             enableEncryption = editEncryptionState
-                            disableP2p = editDisableP2pState
+                            p2pOnly = editP2pOnlyState
+                            disableP2p = editDisableP2pState && !editP2pOnlyState
                             latencyFirst = editLatencyFirstState
                             privateMode = editPrivateModeState
                             noTun = editNoTunState
@@ -854,7 +857,14 @@ private fun DashboardScreen(
                     if (editShowAdvanced) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             SwitchRow("启用加密", editEncryptionState) { editEncryptionState = it }
-                            SwitchRow("禁用 P2P", editDisableP2pState) { editDisableP2pState = it }
+                            SwitchRow("仅 P2P", editP2pOnlyState) { enabled ->
+                                editP2pOnlyState = enabled
+                                if (enabled) editDisableP2pState = false
+                            }
+                            SwitchRow("禁用 P2P", editDisableP2pState) { disabled ->
+                                editDisableP2pState = disabled
+                                if (disabled) editP2pOnlyState = false
+                            }
                             SwitchRow("低延迟优先", editLatencyFirstState) { editLatencyFirstState = it }
                             SwitchRow("私有模式", editPrivateModeState) { editPrivateModeState = it }
                             SwitchRow("无 TUN 模式", editNoTunState) { editNoTunState = it }

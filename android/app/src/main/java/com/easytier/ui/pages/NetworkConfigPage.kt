@@ -219,6 +219,7 @@ fun NetworkConfigPage() {
     var latencyFirstEnabled by remember { mutableStateOf(false) }
     var privateModeEnabled by remember { mutableStateOf(true) }
     var noTunEnabled by remember { mutableStateOf(false) }
+    var p2pOnlyEnabled by remember { mutableStateOf(false) }
     var disableP2pEnabled by remember { mutableStateOf(false) }
     var disableUdpHolePunchingEnabled by remember { mutableStateOf(false) }
     var disableTcpHolePunchingEnabled by remember { mutableStateOf(false) }
@@ -253,7 +254,8 @@ fun NetworkConfigPage() {
         latencyFirstEnabled = cfg.latencyFirst
         privateModeEnabled = cfg.privateMode
         noTunEnabled = cfg.noTun
-        disableP2pEnabled = cfg.disableP2p
+        p2pOnlyEnabled = cfg.p2pOnly
+        disableP2pEnabled = cfg.disableP2p && !cfg.p2pOnly
         disableUdpHolePunchingEnabled = cfg.disableUdpHolePunching
         disableTcpHolePunchingEnabled = cfg.disableTcpHolePunching
         disableUpnpEnabled = cfg.disableUpnp
@@ -279,7 +281,8 @@ fun NetworkConfigPage() {
         cfg.latencyFirst = latencyFirstEnabled
         cfg.privateMode = privateModeEnabled
         cfg.noTun = noTunEnabled
-        cfg.disableP2p = disableP2pEnabled
+        cfg.p2pOnly = p2pOnlyEnabled
+        cfg.disableP2p = disableP2pEnabled && !p2pOnlyEnabled
         cfg.disableUdpHolePunching = disableUdpHolePunchingEnabled
         cfg.disableTcpHolePunching = disableTcpHolePunchingEnabled
         cfg.disableUpnp = disableUpnpEnabled
@@ -632,8 +635,18 @@ fun NetworkConfigPage() {
                                     privateModeEnabled = it
                                     saveCurrentConfig()
                                 }
+                                CustomSwitch(
+                                    "仅 P2P",
+                                    "只与已建立 P2P 的节点通信，不走中转",
+                                    p2pOnlyEnabled
+                                ) {
+                                    p2pOnlyEnabled = it
+                                    if (it) disableP2pEnabled = false
+                                    saveCurrentConfig()
+                                }
                                 CustomSwitch("禁用 P2P", disableP2pEnabled) {
                                     disableP2pEnabled = it
+                                    if (it) p2pOnlyEnabled = false
                                     saveCurrentConfig()
                                 }
                                 CustomSwitch("禁用 UDP 打洞", disableUdpHolePunchingEnabled) {
