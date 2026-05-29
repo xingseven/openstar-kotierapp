@@ -74,6 +74,7 @@ fun LogPage(onBack: (() -> Unit)? = null) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CompactTopBar(
                 title = "运行日志",

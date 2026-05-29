@@ -316,6 +316,7 @@ fun OneClickPage() {
 
     Scaffold(
         containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { CompactTopBar("一键联机") }
     ) { padding ->
         Column(

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.net.VpnService
 import android.widget.Toast
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -392,6 +393,7 @@ fun NetworkConfigPage() {
 
     Scaffold(
         containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CompactTopBar(title = "网络配置") {
                     IconButton(onClick = { addConfig() }) { AppIcon(AppIcons.Add, contentDescription = "新建配置") }

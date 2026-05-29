@@ -112,6 +112,7 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
 
     Scaffold(
         containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { CompactTopBar("设置") }
     ) { padding ->
         Column(
